@@ -1,0 +1,1552 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { 
+  Package, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  Truck, 
+  RefreshCw,
+  Calendar,
+  MapPin,
+  Phone,
+  CreditCard,
+  Eye,
+  ShoppingCart,
+  Star,
+  Search,
+  Filter,
+  X,
+  CalendarDays,
+  ShoppingBag
+} from 'lucide-react';
+import ReviewModal from './ReviewModal';
+
+interface Order {
+  id: string;
+  order_number: string;
+  total_amount: number;
+  delivery_fee: number;
+  grand_total: number;
+  currency: string;
+  status: string;
+  payment_method: string;
+  payment_status: string;
+  delivery_name: string;
+  delivery_phone: string;
+  delivery_address: string;
+  delivery_city: string;
+  delivery_instructions?: string;
+  created_at: string;
+  delivered_at?: string;
+  order_items: OrderItem[];
+}
+
+interface OrderItem {
+  id: string;
+  item_type: 'product' | 'service';
+  item_id: string;
+  item_name: string;
+  item_description?: string;
+  item_image_url?: string;
+  unit_price: number;
+  quantity: number;
+  total_price: number;
+  currency: string;
+  provider_id: string;
+  provider_name: string;
+  provider_phone?: string;
+  provider_address?: string;
+  has_delivery: boolean;
+  has_pickup: boolean;
+  delivery_fee: number;
+}
+
+const ClientOrders: React.FC = () => {
+  const { user } = useAuth();
+  const { addItem } = useCart();
+  const { toast } = useToast();
+  
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
+  const [reviewedOrders, setReviewedOrders] = useState<Set<string>>(new Set());
+  const [checkedOrders, setCheckedOrders] = useState<Set<string>>(new Set());
+  const [orderReviews, setOrderReviews] = useState<Map<string, any[]>>(new Map());
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState('pedidos');
+
+  // Separate orders and reservations
+  const productOrders = orders.filter(order => 
+    order.order_items.some(item => item.item_type === 'product')
+  );
+  
+  const serviceOrders = orders.filter(order => 
+    order.order_items.some(item => item.item_type === 'service')
+  );
+
+  // Get current data based on active tab
+  const getCurrentData = () => {
+    if (activeTab === 'pedidos') {
+      return productOrders;
+    } else {
+      return reservations;
+    }
+  };
+
+  // Fetch orders function
+  const fetchOrders = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      // First fetch orders - add debug logging
+      console.log('Fetching orders for user:', user.id);
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('client_id', user.id)
+        .order('created_at', { ascending: false });
+
+      console.log('Orders query result:', { ordersData, ordersError });
+      if (ordersError) throw ordersError;
+
+      // Then fetch order items for each order
+      if (ordersData && ordersData.length > 0) {
+        const orderIds = ordersData.map(order => order.id);
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .in('order_id', orderIds);
+
+        if (itemsError) throw itemsError;
+
+        // Combine orders with their items
+        const ordersWithItems = ordersData.map(order => ({
+          ...order,
+          order_items: itemsData?.filter(item => item.order_id === order.id) || []
+        }));
+
+        setOrders(ordersWithItems);
+      } else {
+        setOrders([]);
+      }
+
+      // Fetch service reservations
+      const { data: reservationsData, error: reservationsError } = await supabase
+        .from('service_appointments')
+        .select(`
+          *,
+          provider_services (
+            service_name,
+            service_category,
+            description,
+            price,
+            currency,
+            duration_minutes,
+            providers (
+              business_name,
+              business_type,
+              address,
+              phone,
+              profile_picture_url
+            )
+          )
+        `)
+        .eq('client_id', user.id)
+        .order('appointment_date', { ascending: false });
+
+      if (reservationsError) {
+        console.error('Error fetching reservations:', reservationsError);
+        setReservations([]);
+      } else {
+        setReservations(reservationsData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        code: (error as any)?.code,
+        details: (error as any)?.details,
+        hint: (error as any)?.hint,
+        error: error
+      });
+      toast({
+        title: "❌ Error",
+        description: `No se pudieron cargar las órdenes: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle order again
+  const handleOrderAgain = async (order: Order) => {
+    try {
+      // Add all items from the order to cart
+      let addedCount = 0;
+      
+      for (const item of order.order_items) {
+        addItem({
+          id: item.item_id,
+          type: item.item_type,
+          name: item.item_name,
+          price: item.unit_price,
+          currency: item.currency,
+          provider_id: item.provider_id,
+          provider_name: item.provider_name,
+          image_url: item.item_image_url,
+          description: item.item_description,
+        });
+        addedCount++;
+      }
+
+      toast({
+        title: "✅ Productos Agregados",
+        description: `${addedCount} ${addedCount === 1 ? 'producto' : 'productos'} agregado${addedCount === 1 ? '' : 's'} al carrito`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error adding items to cart:', error);
+      toast({
+        title: "❌ Error",
+        description: "No se pudieron agregar los productos al carrito",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  };
+
+  // Handle view order details
+  const handleViewDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setShowOrderDetails(true);
+  };
+
+  // Handle review order
+  const handleReviewOrder = (order: Order) => {
+    setReviewOrderId(order.id);
+    setShowReviewModal(true);
+  };
+
+  // Handle review submission
+  const handleReviewSubmitted = async () => {
+    // Mark this order as reviewed
+    if (reviewOrderId) {
+      console.log('Marking order as reviewed:', reviewOrderId);
+      setReviewedOrders(prev => new Set([...prev, reviewOrderId]));
+      
+      // Fetch the review data for this order
+      const isReviewed = await hasOrderBeenReviewed(reviewOrderId);
+      if (isReviewed) {
+        console.log('Review data fetched for order:', reviewOrderId);
+      }
+    }
+    // Refresh orders to show updated review status
+    fetchOrders();
+  };
+
+  const hasOrderBeenReviewed = async (orderId: string) => {
+    // Check if order has been reviewed by looking at the database
+    try {
+      // Get the order to find its providers
+      const order = orders.find(o => o.id === orderId);
+      if (!order) {
+        console.log('Order not found:', orderId);
+        return false;
+      }
+
+      // Get all unique provider IDs from this order
+      const providerIds = [...new Set(order.order_items.map(item => item.provider_id))];
+      console.log('Checking order:', orderId, 'Provider IDs:', providerIds);
+      
+      if (providerIds.length === 0) {
+        console.log('No providers found for order:', orderId);
+        return false;
+      }
+
+      // First, get the actual provider IDs from the providers table
+      const { data: providerData, error: providerError } = await supabase
+        .from('providers')
+        .select('id')
+        .in('user_id', providerIds);
+
+      if (providerError) {
+        console.error('Error fetching provider data:', providerError);
+        return false;
+      }
+
+      const actualProviderIds = providerData?.map(p => p.id) || [];
+      console.log('Actual provider IDs from providers table:', actualProviderIds);
+
+      if (actualProviderIds.length === 0) {
+        console.log('No actual provider IDs found');
+        return false;
+      }
+
+      // Check if there are any provider reviews for this order's providers from this user
+      const { data: reviews, error } = await supabase
+        .from('provider_reviews')
+        .select('provider_id, rating, comment, created_at')
+        .eq('client_id', user?.id)
+        .in('provider_id', actualProviderIds);
+
+      console.log('Reviews found:', reviews);
+
+      if (error) {
+        console.error('Error checking reviews:', error);
+        return false;
+      }
+
+      // If we have reviews for all providers in this order, consider it reviewed
+      const hasAllReviews = reviews && reviews.length >= actualProviderIds.length;
+      console.log('Has all reviews:', hasAllReviews, 'Reviews count:', reviews?.length, 'Providers count:', actualProviderIds.length);
+      
+      // Store the review data for this order
+      if (hasAllReviews && reviews) {
+        setOrderReviews(prev => new Map([...prev, [orderId, reviews]]));
+      }
+      
+      return hasAllReviews;
+    } catch (error) {
+      console.error('Error checking if order reviewed:', error);
+      return false;
+    }
+  };
+
+  // Check which orders have been reviewed
+  const checkOrdersForReviews = async () => {
+    if (!user || orders.length === 0) return;
+
+    console.log('Checking orders for reviews. Total orders:', orders.length);
+    const newReviewedOrders = new Set<string>();
+    
+    for (const order of orders) {
+      if (order.status === 'delivered' && !checkedOrders.has(order.id)) {
+        console.log('Checking delivered order:', order.id);
+        const isReviewed = await hasOrderBeenReviewed(order.id);
+        console.log('Order', order.id, 'reviewed:', isReviewed);
+        if (isReviewed) {
+          newReviewedOrders.add(order.id);
+        }
+        setCheckedOrders(prev => new Set([...prev, order.id]));
+      }
+    }
+    
+    console.log('New reviewed orders:', Array.from(newReviewedOrders));
+    if (newReviewedOrders.size > 0) {
+      setReviewedOrders(prev => new Set([...prev, ...newReviewedOrders]));
+    }
+  };
+
+  // Fetch orders on component mount
+  useEffect(() => {
+    fetchOrders();
+  }, [user, toast]);
+
+  // Check for reviews when orders change
+  useEffect(() => {
+    if (orders.length > 0) {
+      checkOrdersForReviews();
+    }
+  }, [orders]);
+
+  // Get status badge variant
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return { 
+          variant: 'secondary' as const, 
+          icon: Clock, 
+          label: 'Pendiente',
+          className: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200'
+        };
+      case 'confirmed':
+        return { 
+          variant: 'default' as const, 
+          icon: CheckCircle, 
+          label: 'Confirmada',
+          className: 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200'
+        };
+      case 'processing':
+        return { 
+          variant: 'default' as const, 
+          icon: Package, 
+          label: 'Procesando',
+          className: 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200'
+        };
+      case 'shipped':
+        return { 
+          variant: 'default' as const, 
+          icon: Truck, 
+          label: 'Enviada',
+          className: 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200'
+        };
+      case 'delivered':
+        return { 
+          variant: 'default' as const, 
+          icon: CheckCircle, 
+          label: 'Entregada',
+          className: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200'
+        };
+      case 'cancelled':
+        return { 
+          variant: 'destructive' as const, 
+          icon: XCircle, 
+          label: 'Cancelada',
+          className: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+        };
+      default:
+        return { 
+          variant: 'secondary' as const, 
+          icon: Clock, 
+          label: status,
+          className: 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
+        };
+    }
+  };
+
+  // Get payment status badge
+  const getPaymentStatusBadge = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case 'completed':
+        return { 
+          variant: 'default' as const, 
+          label: 'Pagado',
+          className: 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200'
+        };
+      case 'pending':
+        return { 
+          variant: 'secondary' as const, 
+          label: 'Pendiente',
+          className: 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200'
+        };
+      case 'failed':
+        return { 
+          variant: 'destructive' as const, 
+          label: 'Falló',
+          className: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+        };
+      case 'refunded':
+        return { 
+          variant: 'outline' as const, 
+          label: 'Reembolsado',
+          className: 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
+        };
+      default:
+        return { 
+          variant: 'secondary' as const, 
+          label: paymentStatus,
+          className: 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
+        };
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-GT', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Filter orders based on current filter settings
+  const getFilteredData = () => {
+    const currentData = getCurrentData();
+    let filtered = [...currentData];
+
+    if (activeTab === 'pedidos') {
+      // Filter orders
+      if (searchTerm) {
+        filtered = filtered.filter(order => 
+          order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.order_items.some(item => 
+            item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.provider_name.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        );
+      }
+
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(order => order.status === statusFilter);
+      }
+
+      if (dateFilter !== 'all') {
+        const now = new Date();
+        const filterDate = new Date();
+        
+        switch (dateFilter) {
+          case 'today':
+            filterDate.setHours(0, 0, 0, 0);
+            filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
+            break;
+          case 'week':
+            filterDate.setDate(now.getDate() - 7);
+            filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
+            break;
+          case 'month':
+            filterDate.setMonth(now.getMonth() - 1);
+            filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
+            break;
+          case 'year':
+            filterDate.setFullYear(now.getFullYear() - 1);
+            filtered = filtered.filter(order => new Date(order.created_at) >= filterDate);
+            break;
+        }
+      }
+    } else {
+      // Filter reservations
+      if (searchTerm) {
+        filtered = filtered.filter(reservation => 
+          reservation.provider_services?.service_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          reservation.provider_services?.providers?.business_name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(reservation => reservation.status === statusFilter);
+      }
+
+      if (dateFilter !== 'all') {
+        const now = new Date();
+        const filterDate = new Date();
+        
+        switch (dateFilter) {
+          case 'today':
+            filterDate.setHours(0, 0, 0, 0);
+            filtered = filtered.filter(reservation => new Date(reservation.appointment_date) >= filterDate);
+            break;
+          case 'week':
+            filterDate.setDate(now.getDate() - 7);
+            filtered = filtered.filter(reservation => new Date(reservation.appointment_date) >= filterDate);
+            break;
+          case 'month':
+            filterDate.setMonth(now.getMonth() - 1);
+            filtered = filtered.filter(reservation => new Date(reservation.appointment_date) >= filterDate);
+            break;
+          case 'year':
+            filterDate.setFullYear(now.getFullYear() - 1);
+            filtered = filtered.filter(reservation => new Date(reservation.appointment_date) >= filterDate);
+            break;
+        }
+      }
+    }
+
+    return filtered;
+  };
+
+  const filteredData = getFilteredData();
+
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header Bar */}
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold mb-2">Mis Órdenes</h2>
+        <p className="text-purple-100">Historial de todas tus compras</p>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="pedidos" className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4" />
+              Mis Pedidos
+            </TabsTrigger>
+            <TabsTrigger value="reservas" className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" />
+              Mis Reservas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pedidos" className="space-y-6">
+            {/* Filters for Orders */}
+        <div className="mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Buscar por número de orden, producto o proveedor..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              Filtros
+            </Button>
+          </div>
+
+          {showFilters && (
+            <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Estado de la Orden
+                  </label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                      <SelectItem value="confirmed">Confirmada</SelectItem>
+                      <SelectItem value="processing">En Proceso</SelectItem>
+                      <SelectItem value="shipped">Enviada</SelectItem>
+                      <SelectItem value="delivered">Entregada</SelectItem>
+                      <SelectItem value="cancelled">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Período de Tiempo
+                  </label>
+                  <Select value={dateFilter} onValueChange={setDateFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los períodos</SelectItem>
+                      <SelectItem value="today">Hoy</SelectItem>
+                      <SelectItem value="week">Última semana</SelectItem>
+                      <SelectItem value="month">Último mes</SelectItem>
+                      <SelectItem value="year">Último año</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Mostrando {filteredOrders.length} de {orders.length} órdenes
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setStatusFilter('all');
+                    setDateFilter('all');
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Limpiar Filtros
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+            {/* Stats Cards for Orders */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Órdenes</p>
+                      <p className="text-2xl font-bold text-gray-900">{productOrders.length}</p>
+                    </div>
+                    <div className="p-3 bg-blue-100 rounded-full">
+                      <Package className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Entregadas</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {productOrders.filter(order => order.status === 'delivered').length}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-green-100 rounded-full">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">En Proceso</p>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {productOrders.filter(order => ['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)).length}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-yellow-100 rounded-full">
+                      <Clock className="w-6 h-6 text-yellow-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Gastado</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {formatPrice(productOrders.reduce((sum, order) => sum + order.grand_total, 0), 'GTQ')}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-purple-100 rounded-full">
+                      <CreditCard className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Orders List */}
+            {filteredData.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                    {productOrders.length === 0 ? 'No tienes órdenes aún' : 'No se encontraron órdenes'}
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    {productOrders.length === 0 
+                      ? 'Cuando hagas tu primera compra, aparecerá aquí'
+                      : 'Intenta ajustar los filtros para encontrar lo que buscas'
+                    }
+                  </p>
+                  <Button onClick={() => window.location.href = '/client-dashboard'}>
+                    Ir al Marketplace
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {filteredData.map((order) => (
+                  <Card key={order.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Orden #{order.order_number}
+                            </h3>
+                            <Badge 
+                              className={getStatusBadge(order.status).className}
+                            >
+                              {getStatusBadge(order.status).text}
+                            </Badge>
+                            <Badge 
+                              className={getPaymentStatusBadge(order.payment_status).className}
+                            >
+                              {getPaymentStatusBadge(order.payment_status).text}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {formatDate(order.created_at)}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <Package className="w-4 h-4" />
+                              {order.order_items.length} producto{order.order_items.length !== 1 ? 's' : ''}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CreditCard className="w-4 h-4" />
+                              {formatPrice(order.grand_total, order.currency)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetails(order)}
+                            className="flex items-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver Detalles
+                          </Button>
+                          {order.status === 'delivered' && !reviewedOrders.has(order.id) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReviewOrder(order.id)}
+                              className="flex items-center gap-2"
+                            >
+                              <Star className="w-4 h-4" />
+                              Calificar
+                            </Button>
+                          )}
+                          {order.status === 'delivered' && reviewedOrders.has(order.id) && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                              <Star className="w-4 h-4" />
+                              Ya calificado
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="reservas" className="space-y-6">
+            {/* Filters for Reservations */}
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Buscar por servicio o proveedor..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2"
+                >
+                  <Filter className="w-4 h-4" />
+                  Filtros
+                </Button>
+              </div>
+
+              {showFilters && (
+                <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Estado
+                      </label>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los estados</SelectItem>
+                          <SelectItem value="pending">Pendiente</SelectItem>
+                          <SelectItem value="confirmed">Confirmado</SelectItem>
+                          <SelectItem value="cancelled">Cancelado</SelectItem>
+                          <SelectItem value="completed">Completado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Período de Tiempo
+                      </label>
+                      <Select value={dateFilter} onValueChange={setDateFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar período" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los períodos</SelectItem>
+                          <SelectItem value="today">Hoy</SelectItem>
+                          <SelectItem value="week">Última semana</SelectItem>
+                          <SelectItem value="month">Último mes</SelectItem>
+                          <SelectItem value="year">Último año</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      Mostrando {filteredData.length} de {reservations.length} reservas
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchTerm('');
+                        setStatusFilter('all');
+                        setDateFilter('all');
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Limpiar Filtros
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stats Cards for Reservations */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Reservas</p>
+                      <p className="text-2xl font-bold text-gray-900">{reservations.length}</p>
+                    </div>
+                    <div className="p-3 bg-blue-100 rounded-full">
+                      <CalendarDays className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Completadas</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {reservations.filter(reservation => reservation.status === 'completed').length}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-green-100 rounded-full">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Pendientes</p>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {reservations.filter(reservation => ['pending', 'confirmed'].includes(reservation.status)).length}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-yellow-100 rounded-full">
+                      <Clock className="w-6 h-6 text-yellow-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Total Gastado</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {formatPrice(reservations.reduce((sum, reservation) => sum + reservation.total_price, 0), 'GTQ')}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-purple-100 rounded-full">
+                      <CreditCard className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Reservations List */}
+            {filteredData.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <CalendarDays className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                    {reservations.length === 0 ? 'No tienes reservas aún' : 'No se encontraron reservas'}
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    {reservations.length === 0 
+                      ? 'Cuando hagas tu primera reserva de servicio, aparecerá aquí'
+                      : 'Intenta ajustar los filtros para encontrar lo que buscas'
+                    }
+                  </p>
+                  <Button onClick={() => window.location.href = '/client-dashboard'}>
+                    Ir al Marketplace
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {filteredData.map((reservation) => (
+                  <Card key={reservation.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {reservation.provider_services?.service_name || 'Servicio'}
+                            </h3>
+                            <Badge 
+                              className={getStatusBadge(reservation.status).className}
+                            >
+                              {getStatusBadge(reservation.status).text}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {formatDate(reservation.appointment_date)}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {reservation.provider_services?.providers?.business_name || 'Proveedor'}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CreditCard className="w-4 h-4" />
+                              {formatPrice(reservation.total_price, reservation.currency)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedOrder({
+                                id: reservation.id,
+                                order_number: `RES-${reservation.id.slice(-8)}`,
+                                total_amount: reservation.total_price,
+                                delivery_fee: 0,
+                                grand_total: reservation.total_price,
+                                currency: reservation.currency,
+                                status: reservation.status,
+                                payment_method: 'service',
+                                payment_status: 'completed',
+                                delivery_name: reservation.client_name,
+                                delivery_phone: reservation.client_phone,
+                                delivery_address: '',
+                                delivery_city: '',
+                                delivery_instructions: reservation.notes,
+                                created_at: reservation.created_at,
+                                order_items: [{
+                                  id: reservation.id,
+                                  item_type: 'service',
+                                  item_id: reservation.service_id,
+                                  item_name: reservation.provider_services?.service_name || 'Servicio',
+                                  provider_id: reservation.provider_id,
+                                  provider_name: reservation.provider_services?.providers?.business_name || 'Proveedor',
+                                  unit_price: reservation.total_price,
+                                  quantity: 1,
+                                  total_price: reservation.total_price,
+                                  currency: reservation.currency,
+                                  item_description: reservation.provider_services?.description,
+                                  item_image_url: null,
+                                  provider_phone: reservation.provider_services?.providers?.phone,
+                                  provider_address: reservation.provider_services?.providers?.address,
+                                  has_delivery: false,
+                                  has_pickup: false,
+                                  delivery_fee: 0
+                                }]
+                              });
+                              setShowOrderDetails(true);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Ver Detalles
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="client-order-details-description">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Órdenes</p>
+                <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Package className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Entregadas</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {orders.filter(o => o.status === 'delivered').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">En Proceso</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {orders.filter(o => ['pending', 'confirmed', 'processing', 'shipped'].includes(o.status)).length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Gastado</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  Q.{orders.reduce((sum, order) => sum + order.grand_total, 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <CreditCard className="w-6 h-6 text-emerald-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Orders List */}
+      {filteredOrders.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-16">
+            <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {orders.length === 0 ? 'No tienes órdenes aún' : 'No se encontraron órdenes'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {orders.length === 0 
+                ? 'Cuando realices tu primera compra, aparecerá aquí'
+                : 'Intenta ajustar los filtros para ver más resultados'
+              }
+            </p>
+            {orders.length === 0 && (
+              <Button variant="outline">
+                Ir al Marketplace
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredOrders.map((order) => {
+            const statusBadge = getStatusBadge(order.status);
+            const paymentBadge = getPaymentStatusBadge(order.payment_status);
+            
+            return (
+              <Card key={order.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="w-5 h-5" />
+                        Orden {order.order_number}
+                      </CardTitle>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant={statusBadge.variant} className={`flex items-center gap-1 ${statusBadge.className}`}>
+                          <statusBadge.icon className="w-3 h-3" />
+                          {statusBadge.label}
+                        </Badge>
+                        <Badge variant={paymentBadge.variant} className={paymentBadge.className}>
+                          {paymentBadge.label}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-gray-900">
+                        {order.currency === 'GTQ' ? 'Q.' : '$'}{order.grand_total}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(order.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Order Items Preview */}
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">
+                        Productos ({order.order_items.length})
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {order.order_items.slice(0, 3).map((item) => (
+                          <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="w-12 h-12 rounded-md overflow-hidden border bg-white flex items-center justify-center">
+                              {item.item_image_url ? (
+                                <img 
+                                  src={item.item_image_url} 
+                                  alt={item.item_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Package className="w-4 h-4 text-gray-400" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">{item.item_name}</p>
+                              <p className="text-sm text-gray-500">{item.provider_name}</p>
+                              <p className="text-sm text-gray-600">
+                                {item.quantity}x {item.currency === 'GTQ' ? 'Q.' : '$'}{item.unit_price}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {order.order_items.length > 3 && (
+                          <div className="flex items-center justify-center p-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                            <p className="text-sm text-gray-500">
+                              +{order.order_items.length - 3} más
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Delivery Info */}
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        {order.delivery_city}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Phone className="w-4 h-4" />
+                        {order.delivery_phone}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CreditCard className="w-4 h-4" />
+                        {order.payment_method === 'card' ? 'Tarjeta' : 
+                         order.payment_method === 'cash' ? 'Efectivo' : 'Transferencia'}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDetails(order)}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver Detalles
+                      </Button>
+                      
+                      {/* Review button for delivered orders */}
+                      {order.status === 'delivered' && !reviewedOrders.has(order.id) && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleReviewOrder(order)}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          <Star className="w-4 h-4 mr-2" />
+                          Calificar
+                        </Button>
+                      )}
+                      
+                      {/* Show reviewed status for delivered orders */}
+                      {order.status === 'delivered' && reviewedOrders.has(order.id) && (
+                        <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Star className="w-4 h-4 fill-current text-green-600" />
+                            <span className="text-sm font-medium text-green-800">Ya calificado</span>
+                          </div>
+                          {orderReviews.get(order.id) && (
+                            <div className="space-y-1">
+                              {orderReviews.get(order.id)?.map((review, index) => (
+                                <div key={index} className="text-xs text-green-700">
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <div className="flex">
+                                      {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                          key={star}
+                                          className={`w-3 h-3 ${
+                                            star <= review.rating
+                                              ? 'text-yellow-400 fill-current'
+                                              : 'text-gray-300'
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="font-medium">{review.rating}/5</span>
+                                  </div>
+                                  {review.comment && (
+                                    <p className="text-green-600 italic">"{review.comment}"</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleOrderAgain(order)}
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Ordenar de Nuevo
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="client-order-details-description">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Detalles de Orden {selectedOrder.order_number}
+              </DialogTitle>
+              <DialogDescription>
+                Información completa de la orden incluyendo productos, proveedores y detalles de entrega.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6" id="client-order-details-description">
+              {/* Order Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Información de la Orden</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Estado:</span>
+                      <Badge variant={getStatusBadge(selectedOrder.status).variant} className={getStatusBadge(selectedOrder.status).className}>
+                        {getStatusBadge(selectedOrder.status).label}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Pago:</span>
+                      <Badge variant={getPaymentStatusBadge(selectedOrder.payment_status).variant} className={getPaymentStatusBadge(selectedOrder.payment_status).className}>
+                        {getPaymentStatusBadge(selectedOrder.payment_status).label}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Fecha:</span>
+                      <span>{formatDate(selectedOrder.created_at)}</span>
+                    </div>
+                    {selectedOrder.delivered_at && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Entregado:</span>
+                        <span>{formatDate(selectedOrder.delivered_at)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Información de Entrega</h3>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-gray-600">Nombre:</span>
+                      <p>{selectedOrder.delivery_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Teléfono:</span>
+                      <p>{selectedOrder.delivery_phone}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Dirección:</span>
+                      <p>{selectedOrder.delivery_address}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Ciudad:</span>
+                      <p>{selectedOrder.delivery_city}</p>
+                    </div>
+                    {selectedOrder.delivery_instructions && (
+                      <div>
+                        <span className="text-gray-600">Instrucciones:</span>
+                        <p>{selectedOrder.delivery_instructions}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Productos Ordenados</h3>
+                <div className="space-y-3">
+                  {selectedOrder.order_items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                      <div className="w-16 h-16 rounded-md overflow-hidden border bg-gray-100 flex items-center justify-center">
+                        {item.item_image_url ? (
+                          <img 
+                            src={item.item_image_url} 
+                            alt={item.item_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Package className="w-6 h-6 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{item.item_name}</h4>
+                        <p className="text-sm text-gray-600">{item.provider_name}</p>
+                        {item.item_description && (
+                          <p className="text-sm text-gray-500 mt-1">{item.item_description}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2">
+                          <Badge variant="outline">
+                            {item.item_type === 'product' ? 'Producto' : 'Servicio'}
+                          </Badge>
+                          {item.has_delivery && (
+                            <Badge variant="secondary">🚚 Entrega</Badge>
+                          )}
+                          {item.has_pickup && (
+                            <Badge variant="secondary">🏪 Recogida</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">
+                          {item.quantity}x {item.currency === 'GTQ' ? 'Q.' : '$'}{item.unit_price}
+                        </p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {item.currency === 'GTQ' ? 'Q.' : '$'}{item.total_price}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Order Totals */}
+              <div className="border-t pt-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span className="font-medium">
+                      {selectedOrder.currency === 'GTQ' ? 'Q.' : '$'}{selectedOrder.total_amount}
+                    </span>
+                  </div>
+                  {selectedOrder.delivery_fee > 0 && (
+                    <div className="flex justify-between">
+                      <span>Costo de entrega:</span>
+                      <span className="font-medium">
+                        {selectedOrder.currency === 'GTQ' ? 'Q.' : '$'}{selectedOrder.delivery_fee}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-semibold border-t pt-2">
+                    <span>Total:</span>
+                    <span>
+                      {selectedOrder.currency === 'GTQ' ? 'Q.' : '$'}{selectedOrder.grand_total}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowOrderDetails(false)}
+                  className="flex-1"
+                >
+                  Cerrar
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleOrderAgain(selectedOrder);
+                    setShowOrderDetails(false);
+                  }}
+                  className="flex-1"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Ordenar de Nuevo
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Review Modal */}
+      {reviewOrderId && (
+        <ReviewModal
+          isOpen={showReviewModal}
+          onClose={() => {
+            setShowReviewModal(false);
+            setReviewOrderId(null);
+          }}
+          orderId={reviewOrderId}
+          orderItems={orders.find(o => o.id === reviewOrderId)?.order_items || []}
+          onReviewSubmitted={handleReviewSubmitted}
+        />
+      )}
+      </div>
+    </div>
+  );
+};
+
+export default ClientOrders;
