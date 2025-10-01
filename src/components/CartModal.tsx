@@ -49,7 +49,7 @@ const CartModal: React.FC<CartModalProps> = ({ isOpen, onClose, onCheckout }) =>
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" aria-describedby="cart-items-description">
+      <DialogContent className="max-w-md sm:max-w-lg md:max-w-2xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-auto" aria-describedby="cart-items-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />

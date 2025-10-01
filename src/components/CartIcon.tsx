@@ -17,7 +17,7 @@ const CartIcon: React.FC<CartIconProps> = ({ onOpenCart }) => {
       variant="outline"
       size="sm"
       onClick={onOpenCart}
-      className="relative"
+      className="relative bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
       disabled={itemCount === 0}
     >
       <ShoppingCart className="w-5 h-5" />

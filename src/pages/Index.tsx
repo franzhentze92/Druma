@@ -46,9 +46,19 @@ const Index: React.FC = () => {
       navigate('/shelter-dashboard')
       return
     }
-    if (role === 'client' && location.pathname !== '/client-dashboard' && location.pathname !== '/') {
-      console.log('Client role detected, redirecting to client dashboard')
-      navigate('/client-dashboard')
+    if (role === 'client' && location.pathname !== '/pet-room' && location.pathname !== '/' && 
+        !location.pathname.startsWith('/ajustes') && !location.pathname.startsWith('/care-hub') && 
+        !location.pathname.startsWith('/social-hub') && !location.pathname.startsWith('/pet-shop') &&
+        !location.pathname.startsWith('/marketplace') && !location.pathname.startsWith('/adopcion') && 
+        !location.pathname.startsWith('/parejas') && !location.pathname.startsWith('/mascotas-perdidas') &&
+        !location.pathname.startsWith('/trazabilidad') &&
+        !location.pathname.startsWith('/feeding-schedules') && !location.pathname.startsWith('/veterinaria') &&
+        !location.pathname.startsWith('/meal-journal') && !location.pathname.startsWith('/adventure-log') && 
+        !location.pathname.startsWith('/health-journal') && !location.pathname.startsWith('/pet-reminders') && 
+        !location.pathname.startsWith('/deliveries') && !location.pathname.startsWith('/client-orders') &&
+        !location.pathname.startsWith('/marketplace/services') && !location.pathname.startsWith('/marketplace/products')) {
+      console.log('Client role detected, redirecting to pet room')
+      navigate('/pet-room')
       return
     }
     
@@ -62,7 +72,7 @@ const Index: React.FC = () => {
           <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">🐾</span>
           </div>
-          <h2 className="text-xl font-semibold text-gray-700">Cargando PetHub...</h2>
+          <h2 className="text-xl font-semibold text-gray-700">Cargando Druma...</h2>
         </div>
       </div>
     );

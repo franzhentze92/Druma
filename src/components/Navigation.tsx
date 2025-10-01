@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
   Activity, 
-  MessageCircle, 
   ShoppingBag, 
   Heart, 
   Settings,
@@ -10,21 +10,48 @@ import {
   Clock,
   Stethoscope,
   Bell,
+  X,
+  Menu,
   Plus,
+  PawPrint,
+  Search,
+  Users,
+  HeartHandshake,
   Utensils,
-  Calendar,
-  X
+  Dumbbell,
+  ChevronUp,
+  Wrench,
+  ShoppingCart,
+  MessageCircle
 } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 const Navigation: React.FC = () => {
   const { activeSection, setActiveSection } = useAppContext();
-  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavigation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [expandedButton, setExpandedButton] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+
+  // Close expanded menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setExpandedButton(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, color: 'from-blue-500 to-purple-600' },
+    { id: 'pet-room', label: 'Mi Mascota', icon: Heart, color: 'from-pink-500 to-purple-600' },
+    { id: 'dashboard', label: 'Inicio', icon: Home, color: 'from-blue-500 to-purple-600' },
     { id: 'trazabilidad', label: 'Ejercicio', icon: Activity, color: 'from-green-500 to-teal-600' },
     { id: 'feeding-schedules', label: 'Nutrición', icon: Clock, color: 'from-emerald-500 to-green-600' },
     { id: 'veterinaria', label: 'Veterinaria', icon: Stethoscope, color: 'from-red-500 to-pink-600' },
@@ -33,186 +60,168 @@ const Navigation: React.FC = () => {
     { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag, color: 'from-orange-500 to-red-600' },
     { id: 'orders', label: 'Órdenes', icon: Package, color: 'from-indigo-500 to-blue-600' },
     { id: 'adopcion', label: 'Adopción', icon: Heart, color: 'from-purple-500 to-pink-600' },
+    { id: 'mascotas-perdidas', label: 'Mascotas Perdidas', icon: Search, color: 'from-orange-500 to-red-600' },
     { id: 'ajustes', label: 'Ajustes', icon: Settings, color: 'from-gray-500 to-slate-600' },
   ];
 
-  const quickActions = [
-    {
-      id: 'exercise',
-      label: 'Ejercicio',
-      icon: Activity,
-      color: 'from-green-500 to-teal-600',
-      action: () => {
-        setActiveSection('trazabilidad');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Ejercicio');
-      }
-    },
-    {
-      id: 'feeding',
-      label: 'Comida',
-      icon: Utensils,
-      color: 'from-emerald-500 to-green-600',
-      action: () => {
-        setActiveSection('feeding-schedules');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Nutrición');
-      }
-    },
-    {
-      id: 'veterinary',
-      label: 'Veterinaria',
-      icon: Stethoscope,
-      color: 'from-red-500 to-pink-600',
-      action: () => {
-        setActiveSection('veterinaria');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Veterinaria');
-      }
-    },
-    {
-      id: 'reminder',
-      label: 'Recordatorio',
-      icon: Bell,
-      color: 'from-purple-500 to-indigo-600',
-      action: () => {
-        setActiveSection('recordatorios');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Recordatorios');
-      }
-    },
-    {
-      id: 'shopping',
-      label: 'Comprar',
-      icon: ShoppingBag,
-      color: 'from-amber-500 to-orange-600',
-      action: () => {
-        setActiveSection('marketplace');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Marketplace');
-      }
-    },
-    {
-      id: 'booking',
-      label: 'Servicio',
-      icon: Calendar,
-      color: 'from-blue-500 to-purple-600',
-      action: () => {
-        setActiveSection('marketplace');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Marketplace para servicios');
-      }
-    },
-    {
-      id: 'adopt',
-      label: 'Adoptar',
-      icon: Heart,
-      color: 'from-pink-500 to-purple-600',
-      action: () => {
-        setActiveSection('adopcion');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Adopción');
-      }
-    },
-    {
-      id: 'breeding',
-      label: 'Parejas',
-      icon: Heart,
-      color: 'from-rose-500 to-pink-600',
-      action: () => {
-        setActiveSection('parejas');
-        setIsQuickActionsOpen(false);
-        toast.success('Redirigiendo a Parejas');
-      }
-    }
+  // Care sub-options
+  const careOptions = [
+    { id: 'nutrition', label: 'Nutrición', icon: Utensils, color: 'from-orange-500 to-red-500', path: '/feeding-schedules' },
+    { id: 'exercise', label: 'Ejercicio', icon: Activity, color: 'from-green-500 to-blue-500', path: '/trazabilidad' },
+    { id: 'veterinary', label: 'Veterinaria', icon: Stethoscope, color: 'from-blue-500 to-purple-500', path: '/veterinaria' },
   ];
+
+  // Shop sub-options
+  const shopOptions = [
+    { id: 'services', label: 'Servicios', icon: Wrench, color: 'from-blue-500 to-cyan-500', path: '/marketplace/services' },
+    { id: 'products', label: 'Productos', icon: Package, color: 'from-green-500 to-emerald-500', path: '/marketplace/products' },
+    { id: 'orders', label: 'Mis Órdenes', icon: ShoppingCart, color: 'from-purple-500 to-indigo-500', path: '/client-orders' },
+  ];
+
+  // Social sub-options
+  const socialOptions = [
+    { id: 'parejas', label: 'Parejas', icon: HeartHandshake, color: 'from-rose-500 to-pink-500', path: '/parejas' },
+    { id: 'mascotas-perdidas', label: 'Mascotas Perdidas', icon: Search, color: 'from-orange-500 to-red-500', path: '/mascotas-perdidas' },
+  ];
+
+  // Simplified navigation items for bottom menu (mobile-first game-like navigation)
+  const bottomNavItems = [
+    { id: 'home', label: 'Inicio', icon: Home, color: 'from-purple-500 to-pink-600', path: '/pet-room' },
+    { id: 'care', label: 'Cuidado', icon: Heart, color: 'from-pink-500 to-purple-600', expandable: true },
+    { id: 'shop', label: 'Tienda', icon: ShoppingBag, color: 'from-orange-500 to-red-600', expandable: true },
+    { id: 'adopcion', label: 'Adopción', icon: Users, color: 'from-green-500 to-emerald-600', path: '/adopcion' },
+    { id: 'social', label: 'Social', icon: MessageCircle, color: 'from-blue-500 to-cyan-600', expandable: true },
+    { id: 'profile', label: 'Ajustes', icon: Settings, color: 'from-gray-500 to-slate-600', path: '/ajustes' },
+  ];
+
 
   return (
     <>
-      {/* Quick Actions Overlay */}
-      {isQuickActionsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsQuickActionsOpen(false)} />
+
+      {/* Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* Quick Actions Menu */}
-      {isQuickActionsOpen && (
-        <div className="fixed bottom-16 md:bottom-20 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-3 md:p-4 max-w-sm mx-auto">
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              {quickActions.map((action) => (
-                <button
-                  key={action.id}
-                  onClick={action.action}
-                  className={`flex flex-col items-center justify-center p-3 md:p-4 rounded-xl transition-all duration-200 bg-gradient-to-r ${action.color} text-white hover:opacity-90 transform hover:scale-105`}
-                >
-                  <action.icon size={20} className="mb-1 md:mb-2" />
-                  <span className="text-xs font-medium text-center">{action.label}</span>
-                </button>
-              ))}
+      {/* Navigation Menu - Slide from Left (Visible on all screens for testing) */}
+      {isMobileMenuOpen && (
+        <div className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out">
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="bg-gradient-to-r from-purple-500 to-pink-600 p-2 rounded-xl">
+                  <PawPrint size={20} className="text-white" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">Druma</h2>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X size={24} className="text-gray-600" />
+              </button>
             </div>
+
+            {/* Navigation Items */}
+            <div className="flex-1 overflow-y-auto p-4 pb-20">
+              <div className="space-y-2">
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      if (item.id === 'pet-room') {
+                        window.location.href = '/pet-room';
+                      } else {
+                        setActiveSection(item.id);
+                      }
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`
+                      w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-200 text-left
+                      ${activeSection === item.id 
+                        ? `bg-gradient-to-r ${item.color} text-white shadow-lg` 
+                        : 'text-gray-700 hover:bg-gray-100'
+                      }
+                    `}
+                  >
+                    <item.icon size={24} />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
 
-      {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-2xl">
-        <div className="flex justify-around items-center py-1 md:py-2 px-1">
-          {/* First half of navigation items */}
-          {navItems.slice(0, 5).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`
-                flex flex-col items-center justify-center p-1 md:p-2 rounded-xl transition-all duration-200 min-w-0 flex-1
-                ${activeSection === item.id 
-                  ? `bg-gradient-to-r ${item.color} text-white shadow-lg transform scale-105` 
-                  : 'text-gray-500 hover:text-gray-700'
-                }
-              `}
-            >
-              <item.icon size={18} className="mb-0.5 md:mb-1" />
-              <span className="text-xs font-medium truncate leading-tight">{item.label}</span>
-            </button>
-          ))}
-          
-          {/* Quick Actions Button - Center */}
-          <button
-            onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
-            className={`
-              flex flex-col items-center justify-center p-2 md:p-3 rounded-xl transition-all duration-200 relative mx-1 md:mx-2
-              ${isQuickActionsOpen 
-                ? 'bg-gradient-to-r from-gray-500 to-gray-700 text-white shadow-lg transform scale-105' 
-                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:from-purple-600 hover:to-pink-600'
-              }
-            `}
-          >
-            {isQuickActionsOpen ? (
-              <X size={20} className="mb-0.5 md:mb-1" />
-            ) : (
-              <Plus size={20} className="mb-0.5 md:mb-1" />
-            )}
-            <span className="text-xs font-medium leading-tight">Acciones</span>
-          </button>
-          
-          {/* Second half of navigation items */}
-          {navItems.slice(5).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`
-                flex flex-col items-center justify-center p-1 md:p-2 rounded-xl transition-all duration-200 min-w-0 flex-1
-                ${activeSection === item.id 
-                  ? `bg-gradient-to-r ${item.color} text-white shadow-lg transform scale-105` 
-                  : 'text-gray-500 hover:text-gray-700'
-                }
-              `}
-            >
-              <item.icon size={18} className="mb-0.5 md:mb-1" />
-              <span className="text-xs font-medium truncate leading-tight">{item.label}</span>
-            </button>
+      {/* Desktop Bottom Navigation - Simplified Layout */}
+      <div ref={navRef} className="hidden md:block fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-2xl">
+        <div className="flex justify-around items-center py-2 px-1">
+          {/* Navigation items */}
+          {bottomNavItems.map((item) => (
+            <div key={item.id} className="relative flex-1">
+              <button
+                onClick={() => {
+                  if (item.expandable) {
+                    setExpandedButton(expandedButton === item.id ? null : item.id);
+                  } else if (item.path) {
+                    navigate(item.path);
+                  } else {
+                    setActiveSection(item.id);
+                  }
+                }}
+                className={`
+                  w-full flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-200 min-w-0
+                  ${location.pathname === item.path 
+                    ? `bg-gradient-to-r ${item.color} text-white shadow-lg transform scale-105` 
+                    : 'text-gray-500 hover:text-gray-700'
+                  }
+                  ${expandedButton === item.id ? `bg-gradient-to-r ${item.color} text-white shadow-lg` : ''}
+                `}
+              >
+                <item.icon size={18} className="mb-1" />
+                <span className="text-xs font-medium truncate leading-tight">{item.label}</span>
+                {item.expandable && (
+                  <ChevronUp 
+                    size={12} 
+                    className={`transition-transform duration-200 ${expandedButton === item.id ? 'rotate-180' : ''}`} 
+                  />
+                )}
+              </button>
+              
+              {/* Expanded Options */}
+              {item.expandable && expandedButton === item.id && (
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2 min-w-[200px]">
+                  {(item.id === 'care' ? careOptions : 
+                    item.id === 'social' ? socialOptions : 
+                    shopOptions).map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => {
+                        navigate(option.path);
+                        setExpandedButton(null);
+                      }}
+                      className={`
+                        w-full flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 text-left
+                        ${location.pathname === option.path 
+                          ? `bg-gradient-to-r ${option.color} text-white shadow-md` 
+                          : 'text-gray-700 hover:bg-gray-100'
+                        }
+                      `}
+                    >
+                      <option.icon size={16} />
+                      <span className="text-sm font-medium">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
+
     </>
   );
 };

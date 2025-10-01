@@ -30,6 +30,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import PageHeader from '@/components/PageHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface Pet {
   id: string;
@@ -61,6 +62,7 @@ interface Reminder {
 
 const Recordatorios: React.FC = () => {
   const { user } = useAuth();
+  const { isMobileMenuOpen, toggleMobileMenu } = useNavigation();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -411,6 +413,9 @@ const Recordatorios: React.FC = () => {
         title="Recordatorios"
         subtitle="Gestiona recordatorios para el cuidado de tus mascotas"
         gradient="from-purple-600 to-indigo-600"
+        showHamburgerMenu={true}
+        onToggleHamburger={toggleMobileMenu}
+        isHamburgerOpen={isMobileMenuOpen}
       >
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogTrigger asChild>
@@ -419,7 +424,7 @@ const Recordatorios: React.FC = () => {
               disabled={pets.length === 0}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Nuevo Recordatorio
+              Nuevo
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">

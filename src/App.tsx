@@ -26,6 +26,7 @@ import Index from '@/pages/Index';
 import NotFound from '@/pages/NotFound';
 import Role from '@/pages/Role';
 import ShelterDetails from '@/components/ShelterDetails';
+import PetCreation from '@/pages/PetCreation';
 
 function App() {
   const queryClient = new QueryClient();
@@ -93,6 +94,24 @@ function App() {
                 <Route path="/app" element={<Auth />} />
                 <Route path="/dashboard" element={<Index />} />
                 <Route path="/role" element={<Role />} />
+                <Route path="/pet-creation" element={<PetCreation />} />
+                <Route path="/pet-room" element={<Index />} />
+                <Route path="/meal-journal" element={<Index />} />
+                <Route path="/adventure-log" element={<Index />} />
+                <Route path="/health-journal" element={<Index />} />
+                <Route path="/pet-reminders" element={<Index />} />
+                <Route path="/social-hub" element={<Index />} />
+                <Route path="/marketplace" element={<Index />} />
+                <Route path="/adopcion" element={<Index />} />
+                <Route path="/trazabilidad" element={<Index />} />
+                <Route path="/feeding-schedules" element={<Index />} />
+                <Route path="/veterinaria" element={<Index />} />
+                <Route path="/ajustes" element={<Index />} />
+                <Route path="/parejas" element={<Index />} />
+                <Route path="/mascotas-perdidas" element={<Index />} />
+                <Route path="/client-orders" element={<Index />} />
+                <Route path="/marketplace/services" element={<Index />} />
+                <Route path="/marketplace/products" element={<Index />} />
                 
                 {/* Dashboard routes */}
                 <Route path="/client-dashboard" element={<Index />} />

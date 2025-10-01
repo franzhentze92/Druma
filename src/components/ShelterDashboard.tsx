@@ -1007,7 +1007,7 @@ const ShelterDashboard: React.FC = () => {
             <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl text-white">🏠</span>
             </div>
-            <h2 className="text-xl font-semibold text-blue-700">¡Bienvenido a PetHub!</h2>
+            <h2 className="text-xl font-semibold text-blue-700">¡Bienvenido a Druma!</h2>
             <p className="text-gray-600 mt-2">Parece que aún no tienes un albergue registrado.</p>
             <p className="text-gray-600 mt-1">Crea tu albergue para comenzar a gestionar mascotas y adopciones.</p>
             

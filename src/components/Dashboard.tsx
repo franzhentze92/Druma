@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useUserProfile } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FeedingNotification from './FeedingNotification';
 import NotificationBell from './NotificationBell';
+import PageHeader from './PageHeader';
 import { supabase } from '@/lib/supabase';
 import '../services/AutoCompleteService'; // Initialize the auto-complete service
 import { 
@@ -73,6 +75,20 @@ interface PetActivityData {
 
 const Dashboard: React.FC = () => {
   const { user, signOut } = useAuth();
+  
+  // Fetch user profile data (same as Ajustes component)
+  const { data: userProfile } = useUserProfile(user?.id);
+  
+  // Get user's display name from profile data
+  const getUserDisplayName = () => {
+    if (userProfile?.full_name) {
+      return userProfile.full_name;
+    }
+    if (user?.email) {
+      return user.email.split('@')[0];
+    }
+    return 'Usuario';
+  };
   const navigate = useNavigate();
   const [pets, setPets] = useState<Pet[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -281,47 +297,60 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  // If user has pets, redirect to PetRoom for gamified experience
+  if (pets && pets.length > 0) {
+    window.location.href = '/pet-room';
+    return null;
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Feeding Notifications */}
       <FeedingNotification />
       
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold mb-2">¡Bienvenido a Gruma! 🐾</h2>
-            <p className="text-purple-100 mb-4">
-              Tu plataforma integral para el cuidado de mascotas
-            </p>
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <Heart className="w-5 h-5" />
-                <span>{stats.totalPets} mascota{stats.totalPets !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Activity className="w-5 h-5" />
-                <span>{stats.totalExerciseSessions} sesiones de ejercicio</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Stethoscope className="w-5 h-5" />
-                <span>{stats.totalVeterinaryVisits} visitas veterinarias</span>
-              </div>
-            </div>
+      {/* Header */}
+      <PageHeader 
+        title={`¡Bienvenido, ${getUserDisplayName()}!`}
+        subtitle="Tu plataforma integral para el cuidado de mascotas"
+        gradient="from-purple-600 to-pink-600"
+        showNotifications={false}
+      >
+        <div className="flex flex-wrap items-center gap-3 md:gap-6">
+          <div className="flex items-center space-x-2">
+            <Heart className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="text-sm md:text-base">
+              <span className="hidden sm:inline">{stats.totalPets} mascota{stats.totalPets !== 1 ? 's' : ''}</span>
+              <span className="sm:hidden">{stats.totalPets} mascota{stats.totalPets !== 1 ? 's' : ''}</span>
+            </span>
           </div>
-          <div className="flex items-center gap-3">
-            <NotificationBell />
-            <Button 
-              onClick={handleLogout} 
-              variant="outline" 
-              className="bg-white/20 text-white border-white/40 hover:bg-white/30 hover:text-white backdrop-blur-sm"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesión
-            </Button>
+          <div className="flex items-center space-x-2">
+            <Activity className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="text-sm md:text-base">
+              <span className="hidden sm:inline">{stats.totalExerciseSessions} sesiones de ejercicio</span>
+              <span className="sm:hidden">{stats.totalExerciseSessions} ejercicio</span>
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Stethoscope className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="text-sm md:text-base">
+              <span className="hidden sm:inline">{stats.totalVeterinaryVisits} visitas veterinarias</span>
+              <span className="sm:hidden">{stats.totalVeterinaryVisits} veterinario</span>
+            </span>
           </div>
         </div>
-      </div>
+        <div className="flex items-center space-x-3">
+          <NotificationBell />
+          <Button 
+            onClick={handleLogout} 
+            variant="outline" 
+            className="bg-white/20 text-white border-white/40 hover:bg-white/30 hover:text-white backdrop-blur-sm"
+          >
+            <LogOut className="w-4 h-4 mr-1 md:mr-2" />
+            <span className="hidden sm:inline">Cerrar Sesión</span>
+            <span className="sm:hidden">Salir</span>
+          </Button>
+        </div>
+      </PageHeader>
 
       {/* Enhanced KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -470,16 +499,16 @@ const Dashboard: React.FC = () => {
               Actividad por Mascota
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pl-2 pr-4">
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={petActivityData}
-                  cx="50%"
+                  cx="60%"
                   cy="50%"
                   labelLine={false}
                   label={({ name, exercise }) => `${name}: ${exercise}`}
-                  outerRadius={60}
+                  outerRadius={70}
                   fill="#8884d8"
                   dataKey="exercise"
                 >

@@ -1,5 +1,7 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAppContext } from '@/contexts/AppContext';
+import { NavigationProvider } from '@/contexts/NavigationContext';
 import Navigation from './Navigation';
 import Dashboard from './Dashboard';
 import Trazabilidad from './Trazabilidad';
@@ -15,9 +17,19 @@ import ShelterDashboard from './ShelterDashboard';
 import FeedingSchedulesPage from '../pages/FeedingSchedulesPage';
 import Recordatorios from '../pages/Recordatorios';
 import Parejas from '../pages/Parejas';
+import MascotasPerdidas from '../pages/MascotasPerdidas';
+import PetRoom from './PetRoom';
+import SocialHub from './SocialHub';
+import PetShop from './PetShop';
+import MealJournal from './MealJournal';
+import AdventureLog from './AdventureLog';
+import HealthJournal from './HealthJournal';
+import PetReminders from './PetReminders';
+import Deliveries from './Deliveries';
 
 const AppLayout: React.FC = () => {
   const { activeSection } = useAppContext();
+  const location = useLocation();
   
   // Get user role to determine which dashboard and components to show
   const userRole = localStorage.getItem('user_role');
@@ -33,45 +45,116 @@ const AppLayout: React.FC = () => {
       return <ShelterDashboard />;
     }
     
-    // Default: client dashboard with regular sections
-    switch (activeSection) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'trazabilidad':
-        return <Trazabilidad />;
-      case 'feeding-schedules':
-        return <FeedingSchedulesPage />;
-      case 'veterinaria':
-        return <Veterinaria />;
-      case 'recordatorios':
-        return <Recordatorios />;
-      case 'parejas':
-        return <Parejas />;
-      case 'comunicacion':
-        return <Comunicacion />;
-      case 'marketplace':
+    // For client users, check if we're on a new gamified route
+    if (userRole === 'client') {
+      const pathname = location.pathname;
+      
+      // Handle new gamified routes
+      if (pathname === '/pet-room' || pathname === '/') {
+        return <PetRoom />;
+      }
+      if (pathname === '/social-hub') {
+        return <SocialHub />;
+      }
+      if (pathname === '/pet-shop') {
+        return <PetShop />;
+      }
+      if (pathname === '/marketplace') {
         return <Marketplace />;
-      case 'orders':
-        return <ClientOrders />;
-      case 'adopcion':
+      }
+      if (pathname === '/adopcion') {
         return <Adopcion />;
-      case 'ajustes':
+      }
+      if (pathname === '/parejas') {
+        return <Parejas />;
+      }
+      if (pathname === '/mascotas-perdidas') {
+        return <MascotasPerdidas />;
+      }
+      if (pathname === '/trazabilidad') {
+        return <Trazabilidad />;
+      }
+      if (pathname === '/feeding-schedules') {
+        return <FeedingSchedulesPage />;
+      }
+      if (pathname === '/veterinaria') {
+        return <Veterinaria />;
+      }
+      if (pathname === '/meal-journal') {
+        return <MealJournal />;
+      }
+      if (pathname === '/adventure-log') {
+        return <AdventureLog />;
+      }
+      if (pathname === '/health-journal') {
+        return <HealthJournal />;
+      }
+      if (pathname === '/pet-reminders') {
+        return <PetReminders />;
+      }
+      if (pathname === '/deliveries') {
+        return <Deliveries />;
+      }
+      if (pathname === '/ajustes') {
         return <Ajustes />;
-      default:
-        return <Dashboard />;
+      }
+      if (pathname === '/client-orders') {
+        return <ClientOrders />;
+      }
+      if (pathname === '/marketplace/services') {
+        return <Marketplace />;
+      }
+      if (pathname === '/marketplace/products') {
+        return <Marketplace />;
+      }
+      
+      // Handle old routes for backward compatibility
+      switch (activeSection) {
+        case 'dashboard':
+          return <Dashboard />;
+        case 'trazabilidad':
+          return <Trazabilidad />;
+        case 'feeding-schedules':
+          return <FeedingSchedulesPage />;
+        case 'veterinaria':
+          return <Veterinaria />;
+        case 'recordatorios':
+          return <Recordatorios />;
+        case 'parejas':
+          return <Parejas />;
+        case 'comunicacion':
+          return <Comunicacion />;
+        case 'marketplace':
+          return <Marketplace />;
+        case 'orders':
+          return <ClientOrders />;
+        case 'adopcion':
+          return <Adopcion />;
+        case 'mascotas-perdidas':
+          return <MascotasPerdidas />;
+        case 'ajustes':
+          return <Ajustes />;
+        default:
+          return <PetRoom />; // Default to PetRoom for gamified experience
+      }
     }
+    
+    return <Dashboard />;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-      {/* Main Content with bottom padding for navigation */}
-      <main className="pb-20">
-        {renderContent()}
-      </main>
-      
-      {/* Bottom Navigation - only show for client users */}
-      {userRole === 'client' && <Navigation />}
-    </div>
+    <NavigationProvider>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+        {/* Main Content with bottom padding for desktop navigation */}
+        <main className="pb-0 md:pb-20">
+          {renderContent()}
+        </main>
+        
+        {/* Navigation - only show for client users */}
+        {userRole === 'client' && <Navigation />}
+        
+      </div>
+    </NavigationProvider>
   );
 };
 

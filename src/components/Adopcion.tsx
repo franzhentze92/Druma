@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, MapPin, Calendar, Users, ChevronLeft, ChevronRight, X, Filter, Star, PawPrint, Building2, Search, Phone, Plus, AlertTriangle, CheckCircle, Eye, MessageCircle } from 'lucide-react';
 import PageHeader from './PageHeader';
 import AdoptionFilters from './AdoptionFilters';
-import { useAdoptionPets, useMyFavorites, useToggleFavorite, useApplyToPet, useMyApplications, useLostPets } from '@/hooks/useAdoption';
+import { useAdoptionPets, useMyFavorites, useToggleFavorite, useApplyToPet, useMyApplications } from '@/hooks/useAdoption';
 import { useAuth } from '@/contexts/AuthContext';
 import AdoptionPetDetails from './AdoptionPetDetails';
 import ShelterDashboard from './ShelterDashboard';
@@ -16,29 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
-import SimpleMap from './SimpleMap';
-import ReportLostPetDialog from './ReportLostPetDialog';
-import LostPetDetailsModal from './LostPetDetailsModal';
 
-interface LostPet {
-  id: string;
-  name: string;
-  species: string;
-  breed: string;
-  age: number;
-  color: string;
-  last_seen: string;
-  last_location: string;
-  latitude: number;
-  longitude: number;
-  description: string;
-  contact_phone: string;
-  contact_email: string;
-  reward?: number;
-  owner_id: string;
-  created_at: string;
-  status: string;
-}
 
 const Adopcion: React.FC = () => {
   const [activeTab, setActiveTab] = useState('catalogo');
@@ -46,11 +24,6 @@ const Adopcion: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<{ species?: string; size?: string }>({});
   const [detailsPet, setDetailsPet] = useState<any | null>(null);
-  const [lostPets, setLostPets] = useState<LostPet[]>([]);
-  const [showLostPetForm, setShowLostPetForm] = useState(false);
-  const [selectedLostPet, setSelectedLostPet] = useState<LostPet | null>(null);
-  const [showReportDialog, setShowReportDialog] = useState(false);
-  const [lostPetsViewMode, setLostPetsViewMode] = useState<'list' | 'map'>('list');
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const navigate = useNavigate();
@@ -59,7 +32,6 @@ const Adopcion: React.FC = () => {
   const { data: pets = [], isLoading: petsLoading } = useAdoptionPets(filters)
   const { data: favoriteIds = [] } = useMyFavorites(user?.id)
   const { data: myApplications = [], isLoading: applicationsLoading } = useMyApplications(user?.id)
-  const { data: lostPetsData = [], isLoading: lostPetsLoading } = useLostPets()
   const toggleFavorite = useToggleFavorite()
   const applyToPet = useApplyToPet()
   
@@ -134,69 +106,10 @@ const Adopcion: React.FC = () => {
     { id: 'catalogo', label: 'Catálogo', icon: Heart, color: 'from-red-500 to-pink-500' },
     { id: 'tinder', label: 'Pet Tinder', icon: Heart, color: 'from-pink-500 to-rose-500' },
     { id: 'albergues', label: 'Albergues', icon: Users, color: 'from-blue-500 to-cyan-500' },
-    { id: 'perdidas', label: 'Mascotas Perdidas', icon: Search, color: 'from-orange-500 to-red-500' },
     { id: 'mis-favoritos', label: 'Mis Favoritos', icon: Star, color: 'from-yellow-500 to-orange-500' },
     { id: 'mis-solicitudes', label: 'Mis Solicitudes', icon: CheckCircle, color: 'from-green-500 to-emerald-500' },
   ];
 
-  // Fetch lost pets - commented out until lost_pets table is created
-  React.useEffect(() => {
-    const fetchLostPets = async () => {
-      try {
-        // TODO: Create lost_pets table in database
-        // const { data, error } = await supabase
-        //   .from('lost_pets')
-        //   .select('*')
-        //   .order('created_at', { ascending: false });
-        
-        // if (error) throw error;
-        // setLostPets(data || []);
-        setLostPets([]); // Empty array for now
-      } catch (error) {
-        console.error('Error fetching lost pets:', error);
-        setLostPets([]); // Fallback to empty array
-      }
-    };
-
-    fetchLostPets();
-  }, []);
-
-  // Handle lost pet form submission
-  const handleLostPetSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    try {
-      const { error } = await supabase
-        .from('lost_pets')
-        .insert({
-          owner_id: user?.id,
-          name: formData.get('name'),
-          species: formData.get('species'),
-          breed: formData.get('breed'),
-          age: formData.get('age') ? parseInt(formData.get('age') as string) : null,
-          color: formData.get('color'),
-          last_seen: formData.get('last_seen'),
-          last_location: formData.get('last_location'),
-          latitude: formData.get('latitude') ? parseFloat(formData.get('latitude') as string) : null,
-          longitude: formData.get('longitude') ? parseFloat(formData.get('longitude') as string) : null,
-          description: formData.get('description'),
-          contact_phone: formData.get('contact_phone'),
-          contact_email: formData.get('contact_email'),
-          reward: formData.get('reward') ? parseFloat(formData.get('reward') as string) : null,
-          image_url: formData.get('image_url'),
-          status: 'lost'
-        });
-
-      if (error) throw error;
-      
-      setShowLostPetForm(false);
-      // Refresh lost pets
-      window.location.reload();
-    } catch (error) {
-      console.error('Error submitting lost pet:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -439,85 +352,6 @@ const Adopcion: React.FC = () => {
 
       {activeTab === 'albergues' && <Shelters />}
 
-      {activeTab === 'perdidas' && (
-        <div className="space-y-6">
-          {/* Header with Register Button */}
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-xl font-bold text-gray-800">Mascotas Perdidas</h3>
-              <p className="text-gray-600">Ayuda a encontrar mascotas perdidas o registra la tuya</p>
-            </div>
-              <Button 
-                onClick={() => setShowReportDialog(true)}
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-              >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Registrar Mascota Perdida
-                </Button>
-                  </div>
-
-            {/* Subtabs */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setLostPetsViewMode('list')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                  lostPetsViewMode === 'list'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
-                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-                }`}
-              >
-                <Search className="w-4 h-4" />
-                Lista
-              </button>
-              <button
-                onClick={() => setLostPetsViewMode('map')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                  lostPetsViewMode === 'map'
-                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
-                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-                }`}
-              >
-                <MapPin className="w-4 h-4" />
-                Mapa
-              </button>
-                  </div>
-
-            {/* Map/List with Lost Pets */}
-            <div className="h-[600px] rounded-lg overflow-hidden border shadow-lg">
-              {lostPetsLoading ? (
-                <div className="h-full flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Cargando {lostPetsViewMode === 'map' ? 'mapa' : 'lista'}...</p>
-                    </div>
-                  </div>
-              ) : (
-                <SimpleMap 
-                  lostPets={lostPetsData} 
-                  viewMode={lostPetsViewMode}
-                  onPetClick={(pet) => setSelectedLostPet(pet as LostPet)}
-                />
-              )}
-                  </div>
-
-            {/* Report Dialog */}
-            <ReportLostPetDialog
-              open={showReportDialog}
-              onClose={() => setShowReportDialog(false)}
-              onSuccess={() => {
-                // Refresh lost pets data
-                window.location.reload(); // Simple refresh for now
-              }}
-            />
-
-            {/* Lost Pet Details Modal */}
-            <LostPetDetailsModal
-              pet={selectedLostPet}
-              open={!!selectedLostPet}
-              onClose={() => setSelectedLostPet(null)}
-            />
-                  </div>
-        )}
 
         {activeTab === 'mis-favoritos' && (
           <div className="space-y-6">

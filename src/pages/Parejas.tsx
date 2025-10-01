@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Heart, 
   PawPrint, 
@@ -29,6 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import BreedingChatModal from '@/components/BreedingChatModal';
 import PageHeader from '@/components/PageHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface Pet {
   id: string;
@@ -69,6 +69,7 @@ interface BreedingMatch {
 
 const Parejas: React.FC = () => {
   const { user } = useAuth();
+  const { isMobileMenuOpen, toggleMobileMenu } = useNavigation();
   const [myPets, setMyPets] = useState<Pet[]>([]);
   const [availablePets, setAvailablePets] = useState<Pet[]>([]);
   const [myMatches, setMyMatches] = useState<BreedingMatch[]>([]);
@@ -88,6 +89,12 @@ const Parejas: React.FC = () => {
   const [activeTab, setActiveTab] = useState('pet-tinder');
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedMatchForChat, setSelectedMatchForChat] = useState<BreedingMatch | null>(null);
+  const [sentRequestsSearch, setSentRequestsSearch] = useState('all');
+  const [sentRequestsFilter, setSentRequestsFilter] = useState<string>('all');
+  const [receivedRequestsSearch, setReceivedRequestsSearch] = useState('all');
+  const [receivedRequestsFilter, setReceivedRequestsFilter] = useState<string>('all');
+  const [matchesSearch, setMatchesSearch] = useState('all');
+  const [matchesFilter, setMatchesFilter] = useState<string>('all');
 
   useEffect(() => {
     if (user) {
@@ -351,6 +358,45 @@ const Parejas: React.FC = () => {
   const acceptedMatches = myMatches.filter(match => match.status === 'accepted');
   const rejectedMatches = myMatches.filter(match => match.status === 'rejected');
 
+  // Filter and sort sent requests
+  const filteredAndSortedSentRequests = sentRequests
+    .filter(request => {
+      const matchesSearch = sentRequestsSearch === 'all' || 
+        request.pet?.name === sentRequestsSearch ||
+        request.potential_partner?.name === sentRequestsSearch;
+      
+      const matchesStatus = sentRequestsFilter === 'all' || request.status === sentRequestsFilter;
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Filter and sort received requests
+  const filteredAndSortedReceivedRequests = receivedRequests
+    .filter(request => {
+      const matchesSearch = receivedRequestsSearch === 'all' || 
+        request.pet?.name === receivedRequestsSearch ||
+        request.potential_partner?.name === receivedRequestsSearch;
+      
+      const matchesStatus = receivedRequestsFilter === 'all' || request.status === receivedRequestsFilter;
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // Filter and sort matches
+  const filteredAndSortedMatches = myMatches
+    .filter(match => {
+      const matchesSearchFilter = matchesSearch === 'all' || 
+        match.pet?.name === matchesSearch ||
+        match.potential_partner?.name === matchesSearch;
+      
+      const matchesStatus = matchesFilter === 'all' || match.status === matchesFilter;
+      
+      return matchesSearchFilter && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -391,32 +437,42 @@ const Parejas: React.FC = () => {
         title="Parejas"
         subtitle="Encuentra la pareja perfecta para tu mascota"
         gradient="from-pink-500 to-purple-600"
+        showHamburgerMenu={true}
+        onToggleHamburger={toggleMobileMenu}
+        isHamburgerOpen={isMobileMenuOpen}
       />
 
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="pet-tinder" className="flex items-center">
-            <Heart className="w-4 h-4 mr-2" />
-            Catálogo de Parejas
-          </TabsTrigger>
-          <TabsTrigger value="solicitudes-enviadas" className="flex items-center">
-            <Send className="w-4 h-4 mr-2" />
-            Solicitudes Enviadas
-          </TabsTrigger>
-          <TabsTrigger value="solicitudes-recibidas" className="flex items-center">
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Solicitudes Recibidas
-          </TabsTrigger>
-          <TabsTrigger value="mis-parejas" className="flex items-center">
-            <Users className="w-4 h-4 mr-2" />
-            Mis Parejas
-          </TabsTrigger>
-        </TabsList>
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[
+            { id: 'pet-tinder', label: 'Catálogo', icon: Heart, color: 'from-pink-500 to-rose-500' },
+            { id: 'solicitudes-enviadas', label: 'Enviadas', icon: Send, color: 'from-blue-500 to-cyan-500' },
+            { id: 'solicitudes-recibidas', label: 'Recibidas', icon: MessageCircle, color: 'from-green-500 to-emerald-500' },
+            { id: 'mis-parejas', label: 'Parejas', icon: Users, color: 'from-purple-500 to-indigo-500' },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                  activeTab === tab.id
+                    ? `bg-gradient-to-r ${tab.color} text-white shadow-lg` 
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Pet Tinder Tab */}
-        <TabsContent value="pet-tinder" className="space-y-6">
+        {/* Tab Content */}
+        {activeTab === 'pet-tinder' && (
+          <div className="space-y-6">
           {/* Filters */}
           <Card>
                 <CardHeader>
@@ -503,9 +559,9 @@ const Parejas: React.FC = () => {
               </Card>
 
               {/* Pet Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {filteredPets.map((pet) => (
-                  <Card key={pet.id} className="overflow-hidden">
+                  <Card key={pet.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-[4/3] bg-gray-200 relative">
                       {pet.image_url ? (
                         <img
@@ -515,50 +571,50 @@ const Parejas: React.FC = () => {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <PawPrint className="w-8 h-8 text-gray-400" />
+                          <PawPrint className="w-12 h-12 text-gray-400" />
                         </div>
                       )}
-                      <div className="absolute top-1 right-1">
-                        <Badge className="bg-white text-gray-800 text-xs px-1 py-0">
-                          {pet.age}a
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-white text-gray-800 text-xs px-2 py-1 shadow-sm">
+                          {pet.age} años
                         </Badge>
                       </div>
                     </div>
                     
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="text-sm font-semibold truncate">{pet.name}</h3>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate">{pet.name}</h3>
                         <Badge variant="outline" className="text-xs">
-                          {pet.gender === 'macho' ? 'M' : 'H'}
+                          {pet.gender === 'macho' ? 'Macho' : 'Hembra'}
                         </Badge>
                       </div>
                       
-                      <p className="text-gray-600 text-xs mb-1 truncate">{pet.breed}</p>
-                      <p className="text-gray-500 text-xs mb-2 truncate">{pet.color}</p>
-                      
-                      <div className="flex items-center text-xs text-gray-500 mb-2">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        <span className="truncate">Ubicación disponible</span>
+                      <div className="space-y-1">
+                        <p className="text-gray-600 text-sm font-medium">{pet.breed}</p>
+                        <p className="text-gray-500 text-sm">{pet.color}</p>
                       </div>
                       
-                      <div className="flex space-x-1">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        <span>Ubicación disponible</span>
+                      </div>
+                      
+                      <div className="flex flex-col space-y-2 pt-2">
                         <Button
                           type="button"
-                          size="sm"
                           variant="outline"
                           onClick={() => handleViewDetails(pet)}
-                          className="flex-1 text-xs h-7"
+                          className="w-full text-sm py-2"
                         >
-                          <Eye className="w-3 h-3 mr-1" />
+                          <Eye className="w-4 h-4 mr-2" />
                           Ver Detalles
                         </Button>
                         <Button
                           type="button"
-                          size="sm"
                           onClick={() => handleLike(pet.id)}
-                          className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-xs h-7"
+                          className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white text-sm py-2"
                         >
-                          <Heart className="w-3 h-3 mr-1" />
+                          <Heart className="w-4 h-4 mr-2" />
                           Solicitar Amor
                         </Button>
                       </div>
@@ -578,10 +634,13 @@ const Parejas: React.FC = () => {
                   </CardContent>
                 </Card>
               )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Solicitudes Recibidas Tab */}
-        <TabsContent value="solicitudes-recibidas" className="space-y-6">
+        {activeTab === 'solicitudes-recibidas' && (
+          <div className="space-y-6">
+          {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
@@ -624,6 +683,53 @@ const Parejas: React.FC = () => {
             </Card>
           </div>
 
+          {/* Search and Filter */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Filter className="w-5 h-5 mr-2" />
+                Buscar y Filtrar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="received-pet-filter">Filtrar por mascota</Label>
+                  <Select value={receivedRequestsSearch} onValueChange={setReceivedRequestsSearch}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar mascota..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las mascotas</SelectItem>
+                      {Array.from(new Set([
+                        ...receivedRequests.map(r => r.pet?.name).filter(Boolean),
+                        ...receivedRequests.map(r => r.potential_partner?.name).filter(Boolean)
+                      ])).map(petName => (
+                        <SelectItem key={petName} value={petName}>{petName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="received-status-filter">Filtrar por estado</Label>
+                  <Select value={receivedRequestsFilter} onValueChange={setReceivedRequestsFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="pending">Pendientes</SelectItem>
+                      <SelectItem value="accepted">Aceptadas</SelectItem>
+                      <SelectItem value="rejected">Rechazadas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Requests List */}
           <div className="space-y-4">
             {receivedRequests.length === 0 ? (
               <Card>
@@ -635,8 +741,18 @@ const Parejas: React.FC = () => {
                   </p>
                 </CardContent>
               </Card>
+            ) : filteredAndSortedReceivedRequests.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
+                  <p className="text-gray-600">
+                    No hay solicitudes que coincidan con los filtros aplicados.
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
-              receivedRequests.map((request) => (
+              filteredAndSortedReceivedRequests.map((request) => (
                 <Card key={request.id} className="overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -734,10 +850,13 @@ const Parejas: React.FC = () => {
               ))
             )}
           </div>
-        </TabsContent>
+          </div>
+        )}
 
         {/* Solicitudes Enviadas Tab */}
-        <TabsContent value="solicitudes-enviadas" className="space-y-6">
+        {activeTab === 'solicitudes-enviadas' && (
+          <div className="space-y-6">
+          {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
@@ -780,6 +899,53 @@ const Parejas: React.FC = () => {
             </Card>
           </div>
 
+          {/* Search and Filter */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Filter className="w-5 h-5 mr-2" />
+                Buscar y Filtrar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="sent-pet-filter">Filtrar por mascota</Label>
+                  <Select value={sentRequestsSearch} onValueChange={setSentRequestsSearch}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar mascota..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las mascotas</SelectItem>
+                      {Array.from(new Set([
+                        ...sentRequests.map(r => r.pet?.name).filter(Boolean),
+                        ...sentRequests.map(r => r.potential_partner?.name).filter(Boolean)
+                      ])).map(petName => (
+                        <SelectItem key={petName} value={petName}>{petName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="sent-status-filter">Filtrar por estado</Label>
+                  <Select value={sentRequestsFilter} onValueChange={setSentRequestsFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="pending">Pendientes</SelectItem>
+                      <SelectItem value="accepted">Aceptadas</SelectItem>
+                      <SelectItem value="rejected">Rechazadas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Requests List */}
           <div className="space-y-4">
             {sentRequests.length === 0 ? (
               <Card>
@@ -791,8 +957,18 @@ const Parejas: React.FC = () => {
                   </p>
                 </CardContent>
               </Card>
+            ) : filteredAndSortedSentRequests.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
+                  <p className="text-gray-600">
+                    No hay solicitudes que coincidan con los filtros aplicados.
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
-              sentRequests.map((request) => (
+              filteredAndSortedSentRequests.map((request) => (
                 <Card key={request.id} className="overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -879,10 +1055,13 @@ const Parejas: React.FC = () => {
               ))
             )}
           </div>
-        </TabsContent>
+          </div>
+        )}
 
         {/* Mis Parejas Tab */}
-        <TabsContent value="mis-parejas" className="space-y-6">
+        {activeTab === 'mis-parejas' && (
+          <div className="space-y-6">
+          {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
@@ -921,10 +1100,77 @@ const Parejas: React.FC = () => {
             </Card>
           </div>
 
+          {/* Search and Filter */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Filter className="w-5 h-5 mr-2" />
+                Buscar y Filtrar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="matches-pet-filter">Filtrar por mascota</Label>
+                  <Select value={matchesSearch} onValueChange={setMatchesSearch}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar mascota..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las mascotas</SelectItem>
+                      {Array.from(new Set([
+                        ...myMatches.map(m => m.pet?.name).filter(Boolean),
+                        ...myMatches.map(m => m.potential_partner?.name).filter(Boolean)
+                      ])).map(petName => (
+                        <SelectItem key={petName} value={petName}>{petName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="matches-status-filter">Filtrar por estado</Label>
+                  <Select value={matchesFilter} onValueChange={setMatchesFilter}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="pending">Pendientes</SelectItem>
+                      <SelectItem value="accepted">Aceptadas</SelectItem>
+                      <SelectItem value="rejected">Rechazadas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Matches List */}
           <div className="space-y-4">
-            {myMatches.map((match) => (
-              <Card key={match.id}>
+            {myMatches.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No tienes parejas aún</h3>
+                  <p className="text-gray-600">
+                    Ve a Pet Tinder para comenzar a buscar parejas para tus mascotas.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : filteredAndSortedMatches.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron resultados</h3>
+                  <p className="text-gray-600">
+                    No hay parejas que coincidan con los filtros aplicados.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredAndSortedMatches.map((match) => (
+                <Card key={match.id}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
@@ -990,22 +1236,12 @@ const Parejas: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              ))
+            )}
           </div>
-
-          {myMatches.length === 0 && (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No tienes parejas aún</h3>
-                <p className="text-gray-600">
-                  Ve a Pet Tinder para comenzar a buscar parejas para tus mascotas.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+          </div>
+        )}
+      </div>
 
       {/* Pet Details Modal */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>

@@ -30,6 +30,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import PageHeader from './PageHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface Pet {
   id: string;
@@ -55,6 +56,7 @@ interface ExerciseSession {
 const Trazabilidad: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMobileMenuOpen, toggleMobileMenu } = useNavigation();
 
   // States
   const [pets, setPets] = useState<Pet[]>([]);
@@ -391,11 +393,14 @@ const Trazabilidad: React.FC = () => {
   const chartData = getChartData();
 
     return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader 
         title="Ejercicio"
         subtitle="Registra y gestiona las actividades físicas de tus mascotas"
         gradient="from-orange-500 to-red-500"
+        showHamburgerMenu={true}
+        onToggleHamburger={toggleMobileMenu}
+        isHamburgerOpen={isMobileMenuOpen}
       >
         <Activity className="w-8 h-8" />
       </PageHeader>

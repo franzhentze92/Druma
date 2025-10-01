@@ -86,6 +86,9 @@ export const Register: React.FC = () => {
             variant: "destructive",
           });
         } else {
+          // Set a flag to indicate this is a new user who might want to create a pet
+          localStorage.setItem('is_new_user', 'true');
+          
           toast({
             title: "¡Cuenta creada exitosamente!",
             description: "Tu cuenta ha sido creada. Revisa tu email para confirmar tu cuenta.",
@@ -127,7 +130,7 @@ export const Register: React.FC = () => {
             <PawPrint className="w-8 h-8 md:w-10 md:h-10 text-white" />
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            ¡Únete a Gruma!
+            ¡Únete a Druma!
           </h1>
           <p className="text-sm md:text-base text-gray-600">
             Crea tu cuenta y comienza a cuidar a tus mascotas
@@ -330,7 +333,7 @@ export const Register: React.FC = () => {
                   className="mt-1"
                 />
                 <Label htmlFor="acceptMarketing" className="text-sm text-gray-600 leading-relaxed">
-                  Me gustaría recibir noticias y actualizaciones sobre Gruma (opcional)
+                  Me gustaría recibir noticias y actualizaciones sobre Druma (opcional)
                 </Label>
               </div>
             </div>

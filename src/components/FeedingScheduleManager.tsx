@@ -31,6 +31,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import PageHeader from './PageHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface Pet {
   id: string;
@@ -96,12 +97,14 @@ interface AutomatedMeal {
 const FeedingScheduleManager: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMobileMenuOpen, toggleMobileMenu } = useNavigation();
   
   // State management
   const [pets, setPets] = useState<Pet[]>([]);
   const [availableFoods, setAvailableFoods] = useState<PetFood[]>([]);
   const [schedules, setSchedules] = useState<FeedingSchedule[]>([]);
   const [automatedMeals, setAutomatedMeals] = useState<AutomatedMeal[]>([]);
+  const [loadingMeals, setLoadingMeals] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingFoods, setLoadingFoods] = useState(false);
   const [activeTab, setActiveTab] = useState('schedules');
@@ -233,6 +236,8 @@ const FeedingScheduleManager: React.FC = () => {
 
   const loadSchedules = async () => {
     try {
+      console.log('Loading feeding schedules for user:', user?.id);
+      
       const { data, error } = await supabase
         .from('pet_feeding_schedules')
         .select('*')
@@ -240,6 +245,7 @@ const FeedingScheduleManager: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.error('Error loading schedules:', error);
         // If table doesn't exist, initialize with empty data
         if (error.code === '42P01' || error.message.includes('does not exist')) {
           console.log('Feeding schedules table not found, initializing with empty data');
@@ -248,6 +254,8 @@ const FeedingScheduleManager: React.FC = () => {
         }
         throw error;
       }
+      
+      console.log('Feeding schedules loaded:', data);
       setSchedules(data || []);
     } catch (error) {
       console.error('Error loading schedules:', error);
@@ -261,6 +269,10 @@ const FeedingScheduleManager: React.FC = () => {
 
   const loadAutomatedMeals = async () => {
     try {
+      setLoadingMeals(true);
+      console.log('Loading automated meals for date:', selectedDate);
+      console.log('User ID:', user?.id);
+      
       const { data, error } = await supabase
         .from('automated_meals')
         .select(`
@@ -274,6 +286,7 @@ const FeedingScheduleManager: React.FC = () => {
         .order('scheduled_time');
 
       if (error) {
+        console.error('Error loading automated meals:', error);
         // If table doesn't exist, initialize with empty data
         if (error.code === '42P01' || error.message.includes('does not exist')) {
           console.log('Automated meals table not found, initializing with empty data');
@@ -282,12 +295,134 @@ const FeedingScheduleManager: React.FC = () => {
         }
         throw error;
       }
+      
+      console.log('Automated meals loaded:', data);
+      
+      // If no meals exist for this date, try to generate them from schedules
+      if (data && data.length === 0 && schedules.length > 0) {
+        console.log('No meals found, attempting to generate from schedules...');
+        await generateMealsFromSchedules();
+        return;
+      }
+      
       setAutomatedMeals(data || []);
     } catch (error) {
       console.error('Error loading automated meals:', error);
       toast({
         title: "Error",
         description: "No se pudieron cargar las comidas automáticas",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMeals(false);
+    }
+  };
+
+  const generateMealsFromSchedules = async () => {
+    try {
+      console.log('Generating meals from schedules for date:', selectedDate);
+      
+      // Get the day of the week for the selected date
+      const selectedDateObj = new Date(selectedDate);
+      const dayOfWeek = selectedDateObj.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      // Find schedules that apply to this day of the week
+      const applicableSchedules = schedules.filter(schedule => {
+        const scheduleDays = schedule.days_of_week || [];
+        return scheduleDays.includes(dayOfWeek);
+      });
+      
+      console.log('Applicable schedules for day', dayOfWeek, ':', applicableSchedules);
+      
+      if (applicableSchedules.length === 0) {
+        console.log('No schedules apply to this day of the week');
+        setAutomatedMeals([]);
+        return;
+      }
+      
+      // Generate meals for each applicable schedule
+      const mealsToCreate = [];
+      
+      for (const schedule of applicableSchedules) {
+        const feedingTimes = schedule.feeding_times || [];
+        
+        for (const feedingTime of feedingTimes) {
+          // Validate required fields
+          if (!schedule.pet_id || !feedingTime.food_id) {
+            console.warn('Skipping meal due to missing required fields:', {
+              pet_id: schedule.pet_id,
+              food_id: feedingTime.food_id,
+              schedule: schedule,
+              feedingTime: feedingTime
+            });
+            continue;
+          }
+          
+          mealsToCreate.push({
+            pet_id: schedule.pet_id,
+            food_id: feedingTime.food_id,
+            schedule_id: schedule.id, // Add the missing schedule_id
+            quantity_grams: feedingTime.quantity_grams || 100,
+            scheduled_date: selectedDate,
+            scheduled_time: feedingTime.time,
+            meal_type: feedingTime.meal_type,
+            status: 'scheduled', // Use 'scheduled' instead of 'pending'
+            owner_id: user?.id,
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+      
+      console.log('Creating meals:', mealsToCreate);
+      console.log('Meal validation:', mealsToCreate.map(meal => ({
+        pet_id: meal.pet_id ? 'valid' : 'MISSING',
+        food_id: meal.food_id ? 'valid' : 'MISSING',
+        owner_id: meal.owner_id ? 'valid' : 'MISSING'
+      })));
+      
+      if (mealsToCreate.length > 0) {
+        const { data, error } = await supabase
+          .from('automated_meals')
+          .insert(mealsToCreate)
+          .select(`
+            *,
+            pets (name),
+            pet_foods!automated_meals_food_id_fkey (name, brand)
+          `);
+
+        if (error) {
+          console.error('Error creating meals:', error);
+          console.error('Failed meals data:', mealsToCreate);
+          
+          // Show more specific error message
+          let errorMessage = "No se pudieron crear las comidas automáticas";
+          if (error.message.includes('invalid input syntax for type uuid')) {
+            errorMessage = "Error: Algunos campos requeridos están vacíos. Revisa que tus horarios tengan mascota y comida asignados.";
+          }
+          
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log('Meals created successfully:', data);
+        setAutomatedMeals(data || []);
+        
+        toast({
+          title: "¡Éxito!",
+          description: `${mealsToCreate.length} comidas generadas para ${selectedDate}`,
+        });
+      } else {
+        setAutomatedMeals([]);
+      }
+    } catch (error) {
+      console.error('Error generating meals:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron generar las comidas",
         variant: "destructive",
       });
     }
@@ -507,22 +642,25 @@ const FeedingScheduleManager: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader 
         title="Horarios de Alimentación"
         subtitle="Configura horarios automáticos para la alimentación de tus mascotas"
         gradient="from-green-500 to-emerald-500"
+        showHamburgerMenu={true}
+        onToggleHamburger={toggleMobileMenu}
+        isHamburgerOpen={isMobileMenuOpen}
       >
         <Utensils className="w-8 h-8" />
       </PageHeader>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="schedules">Mis Horarios</TabsTrigger>
-          <TabsTrigger value="create">Crear Horario</TabsTrigger>
-          <TabsTrigger value="manual">Alimentación Manual</TabsTrigger>
-          <TabsTrigger value="meals">Comidas Programadas</TabsTrigger>
-          <TabsTrigger value="analytics">Análisis & Historial</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
+          <TabsTrigger value="schedules" className="text-sm">Mis Horarios</TabsTrigger>
+          <TabsTrigger value="create" className="text-sm">Crear</TabsTrigger>
+          <TabsTrigger value="manual" className="text-sm">Manual</TabsTrigger>
+          <TabsTrigger value="meals" className="text-sm hidden md:block">Comidas</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-sm hidden md:block">Análisis</TabsTrigger>
         </TabsList>
 
         <TabsContent value="schedules" className="space-y-6">
@@ -943,18 +1081,34 @@ const FeedingScheduleManager: React.FC = () => {
                       setSelectedDate(e.target.value);
                       loadAutomatedMeals();
                     }}
+                    disabled={loadingMeals}
                   />
                 </div>
                 <Button
                   variant="outline"
                   onClick={loadAutomatedMeals}
+                  disabled={loadingMeals}
                 >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Actualizar
+                  {loadingMeals ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                      Cargando...
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Actualizar
+                    </>
+                  )}
                 </Button>
               </div>
 
-              {automatedMeals.length === 0 ? (
+              {loadingMeals ? (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                  <p>Cargando comidas para {selectedDate}...</p>
+                </div>
+              ) : automatedMeals.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Clock className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <p>No hay comidas programadas para esta fecha</p>
@@ -972,6 +1126,13 @@ const FeedingScheduleManager: React.FC = () => {
                                 <span className="font-semibold">
                                   {meal.scheduled_time}
                                 </span>
+                                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                                  {new Date(meal.scheduled_date).toLocaleDateString('es-ES', { 
+                                    day: '2-digit', 
+                                    month: '2-digit', 
+                                    year: 'numeric' 
+                                  })}
+                                </Badge>
                                 <Badge variant="outline" className="text-xs">
                                   {mealTypes.find(m => m.value === meal.meal_type)?.label}
                                 </Badge>

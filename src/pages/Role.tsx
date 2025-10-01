@@ -16,8 +16,8 @@ const Role: React.FC = () => {
     
     switch (role) {
       case 'client':
-        console.log('Navigating to client dashboard...')
-        navigate('/client-dashboard')
+        console.log('Navigating to pet room...')
+        navigate('/pet-room') // Go to pet room, user can create pets from Ajustes if needed
         break
       case 'provider':
         console.log('Navigating to provider dashboard...')
@@ -36,9 +36,9 @@ const Role: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white mb-6">
-            <h1 className="text-4xl font-bold mb-3">🐾 Bienvenido a Gruma</h1>
-            <h2 className="text-2xl font-semibold mb-2">Selecciona tu tipo de cuenta</h2>
-            <p className="text-purple-100 text-lg">Elige cómo deseas usar Gruma</p>
+            <h1 className="text-4xl font-bold mb-3">🐾 ¡Bienvenido a Druma!</h1>
+            <h2 className="text-2xl font-semibold mb-2">Elige tu aventura</h2>
+            <p className="text-purple-100 text-lg">¿Cómo quieres comenzar tu viaje con las mascotas?</p>
           </div>
         </div>
 
@@ -75,18 +75,18 @@ const Role: React.FC = () => {
                 <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white flex items-center justify-center mx-auto mb-4">
                   <UserIcon className="w-10 h-10" />
                 </div>
-                <CardTitle className="text-2xl text-purple-700">Cliente</CardTitle>
-                <p className="text-gray-600">Explora y adopta mascotas</p>
+              <CardTitle className="text-2xl text-purple-700">Dueño de Mascota</CardTitle>
+              <p className="text-gray-600">Crea y cuida a tus compañeros digitales</p>
               </CardHeader>
               <CardContent className="text-center">
                 <p className="text-gray-600 mb-6">
-                  Explora el catálogo de mascotas, guarda favoritos y solicita adopciones
+                  Accede a todas las funcionalidades para cuidar y gestionar mascotas
                 </p>
                 <Button 
                   onClick={() => choose('client')}
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 text-lg font-semibold"
                 >
-                  Continuar como Cliente
+                  🐾 Continuar como Cliente
                 </Button>
               </CardContent>
             </Card>

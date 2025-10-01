@@ -27,6 +27,7 @@ import {
   Eye
 } from 'lucide-react';
 import PageHeader from './PageHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 interface Pet {
   id: string;
@@ -56,6 +57,7 @@ interface VeterinarySession {
 const Veterinaria: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMobileMenuOpen, toggleMobileMenu } = useNavigation();
 
   // States
   const [pets, setPets] = useState<Pet[]>([]);
@@ -322,12 +324,17 @@ const Veterinaria: React.FC = () => {
   const chartData = getChartData();
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <PageHeader 
         title="Veterinaria"
         subtitle="Registra y gestiona las visitas veterinarias de tus mascotas"
         gradient="from-red-500 to-pink-500"
-      />
+        showHamburgerMenu={true}
+        onToggleHamburger={toggleMobileMenu}
+        isHamburgerOpen={isMobileMenuOpen}
+      >
+        <Stethoscope className="w-8 h-8" />
+      </PageHeader>
 
       <Tabs defaultValue="register" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">

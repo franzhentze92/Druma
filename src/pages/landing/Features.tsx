@@ -94,7 +94,7 @@ export const Features: React.FC = () => {
     {
       icon: Globe,
       title: 'Acceso Multiplataforma',
-      description: 'Usa Gruma desde cualquier dispositivo, web o móvil.',
+      description: 'Usa Druma desde cualquier dispositivo, web o móvil.',
       badge: '📱 Multiplataforma',
       color: 'from-green-500 to-teal-600',
       bgColor: 'bg-gradient-to-br from-green-50 to-teal-100'
@@ -139,13 +139,13 @@ export const Features: React.FC = () => {
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
             <PawPrint className="w-5 h-5 text-white" />
-            <span className="text-white font-medium">Gruma</span>
+            <span className="text-white font-medium">Druma</span>
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
-            Características de <span className="text-yellow-300">Gruma</span>
+            Características de <span className="text-yellow-300">Druma</span>
           </h1>
           <p className="text-xl md:text-2xl text-purple-100 max-w-3xl mx-auto leading-relaxed">
-            Descubre todas las herramientas y funcionalidades que hacen de Gruma 
+            Descubre todas las herramientas y funcionalidades que hacen de Druma 
             la plataforma más completa para el cuidado de mascotas.
           </p>
           <div className="flex flex-wrap justify-center gap-4 mt-8">
@@ -238,7 +238,7 @@ export const Features: React.FC = () => {
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Funcionalidades que complementan la experiencia principal y hacen 
-              de Gruma una plataforma excepcional.
+              de Druma una plataforma excepcional.
             </p>
           </div>
 
@@ -279,7 +279,7 @@ export const Features: React.FC = () => {
               Tres pasos simples para comenzar
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Comienza a usar Gruma y mejora el cuidado de tus mascotas 
+              Comienza a usar Druma y mejora el cuidado de tus mascotas 
               en menos de 5 minutos.
             </p>
           </div>
@@ -292,7 +292,7 @@ export const Features: React.FC = () => {
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Regístrate</h3>
               <p className="text-gray-600 text-lg leading-relaxed">
                 Crea tu cuenta gratuita en menos de 2 minutos y accede 
-                a todas las funcionalidades de Gruma.
+                a todas las funcionalidades de Druma.
               </p>
             </div>
 
@@ -311,7 +311,7 @@ export const Features: React.FC = () => {
               <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-8 text-white text-3xl font-bold shadow-lg">
                 3
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Disfruta Gruma</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Disfruta Druma</h3>
               <p className="text-gray-600 text-lg leading-relaxed">
                 Comienza a usar todas las herramientas para el cuidado, 
                 seguimiento y bienestar de tus mascotas.
@@ -341,7 +341,7 @@ export const Features: React.FC = () => {
             ¿Listo para Comenzar?
           </h2>
           <p className="text-xl md:text-2xl text-purple-100 mb-10 max-w-3xl mx-auto leading-relaxed">
-            Únete a miles de familias que ya confían en Gruma para 
+            Únete a miles de familias que ya confían en Druma para 
             el cuidado de sus mascotas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

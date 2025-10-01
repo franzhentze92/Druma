@@ -32,6 +32,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import PageHeader from './PageHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
 import ReviewModal from './ReviewModal';
 
 interface Order {
@@ -78,6 +79,7 @@ const ClientOrders: React.FC = () => {
   const { user } = useAuth();
   const { addItem } = useCart();
   const { toast } = useToast();
+  const { isMobileMenuOpen, toggleMobileMenu } = useNavigation();
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
@@ -416,12 +418,15 @@ const ClientOrders: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header Bar */}
       <PageHeader 
         title="Mis Órdenes"
         subtitle="Historial de todas tus compras"
         gradient="from-purple-600 to-pink-600"
+        showHamburgerMenu={true}
+        onToggleHamburger={toggleMobileMenu}
+        isHamburgerOpen={isMobileMenuOpen}
       >
         <Package className="w-8 h-8" />
       </PageHeader>
@@ -647,33 +652,36 @@ const ClientOrders: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleViewDetails(order)}
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-2 flex-1 sm:flex-initial"
                           >
                             <Eye className="w-4 h-4" />
-                            Ver Detalles
+                            <span className="hidden sm:inline">Ver Detalles</span>
+                            <span className="sm:hidden">Detalles</span>
                           </Button>
                           {order.status === 'delivered' && !reviewedOrders.has(order.id) && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleReviewOrder(order.id)}
-                              className="flex items-center gap-2"
+                              className="flex items-center gap-2 flex-1 sm:flex-initial"
                             >
                               <Star className="w-4 h-4" />
-                              Calificar
+                              <span className="hidden sm:inline">Calificar</span>
+                              <span className="sm:hidden">Calificar</span>
                             </Button>
                           )}
                           {order.status === 'delivered' && reviewedOrders.has(order.id) && (
-                            <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                            <div className="flex items-center justify-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
                               <Star className="w-4 h-4" />
-                              Ya calificado
-                          </div>
-                        )}
+                              <span className="hidden sm:inline">Ya calificado</span>
+                              <span className="sm:hidden">Calificado</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -929,7 +937,8 @@ const ClientOrders: React.FC = () => {
                             className="flex items-center gap-2"
                           >
                             <Eye className="w-4 h-4" />
-                            Ver Detalles
+                            <span className="hidden sm:inline">Ver Detalles</span>
+                            <span className="sm:hidden">Detalles</span>
                           </Button>
                         </div>
                       </div>

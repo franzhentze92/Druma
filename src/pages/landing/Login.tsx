@@ -72,7 +72,7 @@ export const Login: React.FC = () => {
             ¡Bienvenido de vuelta!
           </h1>
           <p className="text-sm md:text-base text-gray-600">
-            Inicia sesión para acceder a tu cuenta de Gruma
+            Inicia sesión para acceder a tu cuenta de Druma
           </p>
         </div>
 

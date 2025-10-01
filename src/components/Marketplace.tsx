@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Scissors, Home, Moon, Stethoscope, GraduationCap, Star, MapPin, Package, Building2, Clock, Coins, Search, Filter, X } from 'lucide-react';
 import PageHeader from './PageHeader';
+import { useNavigation } from '@/contexts/NavigationContext';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,12 +92,26 @@ interface ProviderProduct {
 }
 
 const Marketplace: React.FC = () => {
+  const { isMobileMenuOpen, toggleMobileMenu } = useNavigation();
+  const location = useLocation();
   const [activeCategory, setActiveCategory] = useState('all');
   const [services, setServices] = useState<ProviderService[]>([]);
   const [products, setProducts] = useState<ProviderProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('services');
+  // Initialize activeTab based on URL path
+  const getInitialTab = () => {
+    if (location.pathname === '/marketplace/products') return 'products';
+    if (location.pathname === '/marketplace/services') return 'services';
+    return 'services'; // default
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+
+  // Update activeTab when URL changes
+  useEffect(() => {
+    setActiveTab(getInitialTab());
+  }, [location.pathname]);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -728,6 +744,9 @@ const Marketplace: React.FC = () => {
         title="Marketplace"
         subtitle="Encuentra servicios y productos para tu mascota"
         gradient="from-blue-500 to-cyan-500"
+        showHamburgerMenu={true}
+        onToggleHamburger={toggleMobileMenu}
+        isHamburgerOpen={isMobileMenuOpen}
       >
         <CartIcon onOpenCart={handleOpenCart} />
       </PageHeader>

@@ -99,7 +99,7 @@ const Auth: React.FC = () => {
           <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mb-4">
             <span className="text-2xl">🐾</span>
           </div>
-          <CardTitle className="text-2xl font-bold">Gruma</CardTitle>
+          <CardTitle className="text-2xl font-bold">Druma</CardTitle>
           <CardDescription>
             {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea una nueva cuenta'}
           </CardDescription>
