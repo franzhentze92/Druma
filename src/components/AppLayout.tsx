@@ -145,8 +145,8 @@ const AppLayout: React.FC = () => {
   return (
     <NavigationProvider>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-        {/* Main Content with bottom padding for desktop navigation */}
-        <main className="pb-0 md:pb-20">
+        {/* Main Content with bottom padding for mobile navigation */}
+        <main className="pb-20 md:pb-0">
           {renderContent()}
         </main>
         

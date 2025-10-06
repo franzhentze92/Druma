@@ -155,8 +155,8 @@ const Navigation: React.FC = () => {
         </div>
       )}
 
-      {/* Desktop Bottom Navigation - Simplified Layout */}
-      <div ref={navRef} className="hidden md:block fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-2xl">
+      {/* Mobile Bottom Navigation - Simplified Layout */}
+      <div ref={navRef} className="block md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-2xl">
         <div className="flex justify-around items-center py-2 px-1">
           {/* Navigation items */}
           {bottomNavItems.map((item) => (
