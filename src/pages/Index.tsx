@@ -46,7 +46,7 @@ const Index: React.FC = () => {
       navigate('/shelter-dashboard')
       return
     }
-    if (role === 'client' && location.pathname !== '/pet-room' && location.pathname !== '/' && 
+    if (role === 'client' && location.pathname !== '/marketplace/products' && location.pathname !== '/' && 
         !location.pathname.startsWith('/ajustes') && !location.pathname.startsWith('/care-hub') && 
         !location.pathname.startsWith('/social-hub') && !location.pathname.startsWith('/pet-shop') &&
         !location.pathname.startsWith('/marketplace') && !location.pathname.startsWith('/adopcion') && 
@@ -57,8 +57,8 @@ const Index: React.FC = () => {
         !location.pathname.startsWith('/health-journal') && !location.pathname.startsWith('/pet-reminders') && 
         !location.pathname.startsWith('/deliveries') && !location.pathname.startsWith('/client-orders') &&
         !location.pathname.startsWith('/marketplace/services') && !location.pathname.startsWith('/marketplace/products')) {
-      console.log('Client role detected, redirecting to pet room')
-      navigate('/pet-room')
+      console.log('Client role detected, redirecting to products page')
+      navigate('/marketplace/products')
       return
     }
     

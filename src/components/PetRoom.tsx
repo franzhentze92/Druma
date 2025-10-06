@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePets, useUserProfile } from '@/hooks/useSettings';
-import PetHero from './PetHero';
 import QuickActions from './QuickActions';
+import FeedingNotification from './FeedingNotification';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  TrendingUp, Award, Clock, Heart, Star, Zap, 
-  Activity, Calendar, Camera, MapPin, ShoppingBag,
-  Bell, Stethoscope, Utensils, ChevronDown
-} from 'lucide-react';
+// Icons removed from this page to avoid unused imports; QuickActions handles its own icons
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Pet {
@@ -28,25 +24,7 @@ const PetRoom: React.FC = () => {
   const { data: pets, isLoading } = usePets(user?.id);
   const { data: userProfile } = useUserProfile(user?.id);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
-  const [petMood, setPetMood] = useState<'happy' | 'hungry' | 'tired' | 'excited' | 'sad'>('happy');
-  const [petLevel, setPetLevel] = useState(1);
-  const [petHappiness, setPetHappiness] = useState(85);
-  const [petPoints, setPetPoints] = useState(10);
-
-  // Mock data for demonstration - in real app, this would come from database
-  const [recentActivity] = useState([
-    { id: 1, type: 'walk', description: 'Caminata matutina', time: 'Hace 2 horas', points: 5 },
-    { id: 2, type: 'feed', description: 'Desayuno saludable', time: 'Hace 4 horas', points: 3 },
-    { id: 3, type: 'vet', description: 'Checkup médico', time: 'Ayer', points: 10 },
-    { id: 4, type: 'play', description: 'Tiempo de juego', time: 'Ayer', points: 2 }
-  ]);
-
-  const [achievements] = useState([
-    { id: 1, title: 'Primer Amigo', description: 'Creaste tu primera mascota', icon: '🏆', unlocked: true },
-    { id: 2, title: 'Caminante', description: 'Primera caminata registrada', icon: '🚶', unlocked: true },
-    { id: 3, title: 'Chef', description: 'Alimentación perfecta por 3 días', icon: '👨‍🍳', unlocked: false },
-    { id: 4, title: 'Doctor', description: 'Primera visita al veterinario', icon: '🩺', unlocked: false }
-  ]);
+  // Remove gamified/mocked state for a real-data-only Inicio
 
   useEffect(() => {
     if (pets && pets.length > 0) {
@@ -54,95 +32,65 @@ const PetRoom: React.FC = () => {
     }
   }, [pets]);
 
-  // Simulate pet mood changes based on time and activities
-  useEffect(() => {
-    const hour = new Date().getHours();
-    
-    if (hour >= 7 && hour < 9) {
-      setPetMood('hungry'); // Breakfast time
-    } else if (hour >= 12 && hour < 14) {
-      setPetMood('hungry'); // Lunch time
-    } else if (hour >= 18 && hour < 20) {
-      setPetMood('hungry'); // Dinner time
-    } else if (hour >= 22 || hour < 6) {
-      setPetMood('tired'); // Sleep time
-    } else {
-      setPetMood('happy'); // Play time
-    }
-  }, []);
-
-  // Determine which actions should glow based on pet mood
-  const getGlowingActions = () => {
-    const glowing = [];
-    if (petMood === 'hungry') glowing.push('feed');
-    if (petMood === 'tired') glowing.push('play');
-    if (petHappiness < 70) glowing.push('walk');
-    return glowing;
-  };
-
-  const glowingActions = getGlowingActions();
+  // No gamified dynamic mood/points on Inicio
 
   const handlePetClick = () => {
     // Pet interaction - could trigger animations, sounds, or mini-games
     console.log(`${selectedPet?.name} was clicked!`);
-    
-    // Random chance to gain happiness or points
-    if (Math.random() > 0.7) {
-      setPetHappiness(prev => Math.min(100, prev + 1));
-      setPetPoints(prev => prev + 1);
-    }
   };
 
   const handleFeed = () => {
     console.log('Feed action triggered');
-    // Navigate to gamified feeding module
-    window.location.href = '/meal-journal';
+    // Navigate to real nutrition page from bottom menu
+    window.location.href = '/feeding-schedules';
   };
 
   const handleWalk = () => {
     console.log('Walk action triggered');
-    // Navigate to gamified exercise module
-    window.location.href = '/adventure-log';
+    // Navigate to real exercise page from bottom menu
+    window.location.href = '/trazabilidad';
   };
 
   const handleVet = () => {
     console.log('Vet action triggered');
-    // Navigate to gamified health module
-    window.location.href = '/health-journal';
+    // Navigate to real veterinary page from bottom menu
+    window.location.href = '/veterinaria';
   };
 
   const handlePlay = () => {
     console.log('Play action triggered');
-    setPetMood('excited');
-    setPetHappiness(prev => Math.min(100, prev + 6));
-    setPetPoints(prev => prev + 2);
-    // Could navigate to a play/mini-game module in the future
+    // Navigate to real social page from bottom menu
+    window.location.href = '/parejas';
   };
 
   const handleReminders = () => {
     console.log('Reminders action triggered');
-    // Navigate to gamified reminders module
-    window.location.href = '/pet-reminders';
+    // Navigate to real reminders page from bottom menu
+    window.location.href = '/ajustes';
   };
 
   const handleShopping = () => {
     console.log('Shopping action triggered');
-    // Navigate to marketplace
+    // Navigate to real marketplace from bottom menu
+    window.location.href = '/marketplace';
   };
 
   const handleSchedule = () => {
     console.log('Schedule action triggered');
-    // Navigate to feeding schedules
+    // Navigate to real nutrition page from bottom menu
+    window.location.href = '/feeding-schedules';
   };
 
   const handlePhotos = () => {
     console.log('Photos action triggered');
-    // Navigate to photo gallery
+    // Navigate to real adoption page from bottom menu
+    window.location.href = '/adopcion';
   };
 
   const handleLostPets = () => {
     console.log('Lost pets action triggered');
-    // Navigate to lost pets section
+    // Navigate to real lost pets page from bottom menu
+    window.location.href = '/mascotas-perdidas';
   };
 
   if (isLoading) {
@@ -191,7 +139,11 @@ const PetRoom: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Welcome Message */}
+      {/* Upcoming meals (real) */}
+      <FeedingNotification />
+
+      {/* Welcome Message */
+      }
       <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-xl">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
@@ -274,34 +226,9 @@ const PetRoom: React.FC = () => {
         </Card>
       )}
 
-      {/* Header Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
-          <CardContent className="p-4 text-center">
-            <Star className="w-6 h-6 mx-auto mb-2" />
-            <div className="text-2xl font-bold">{petPoints}</div>
-            <div className="text-xs opacity-90">PetPoints</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="w-6 h-6 mx-auto mb-2" />
-            <div className="text-2xl font-bold">{petLevel}</div>
-            <div className="text-xs opacity-90">Nivel</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0">
-          <CardContent className="p-4 text-center">
-            <Heart className="w-6 h-6 mx-auto mb-2" />
-            <div className="text-2xl font-bold">{petHappiness}%</div>
-            <div className="text-xs opacity-90">Felicidad</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Removed gamified stats (PetPoints, Nivel, Felicidad) */}
 
-      {/* Pet Hero */}
+      {/* Pet summary */}
       <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-0 shadow-xl">
         <CardContent className="p-8">
           <div className="flex items-center justify-between mb-4">
@@ -322,13 +249,9 @@ const PetRoom: React.FC = () => {
               </Badge>
             )}
           </div>
-          <PetHero 
-            pet={selectedPet}
-            mood={petMood}
-            level={petLevel}
-            happiness={petHappiness}
-            onPetClick={handlePetClick}
-          />
+          <div className="mt-2">
+            <Button variant="outline" onClick={handlePetClick}>Interactuar</Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -354,81 +277,7 @@ const PetRoom: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900">
-            <Activity className="w-5 h-5 text-green-600" />
-            Actividad Reciente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                    {activity.type === 'walk' && <Activity className="w-4 h-4 text-white" />}
-                    {activity.type === 'feed' && <Utensils className="w-4 h-4 text-white" />}
-                    {activity.type === 'vet' && <Stethoscope className="w-4 h-4 text-white" />}
-                    {activity.type === 'play' && <Heart className="w-4 h-4 text-white" />}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{activity.description}</p>
-                    <p className="text-sm text-gray-500">{activity.time}</p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  +{activity.points} pts
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Achievements */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900">
-            <Award className="w-5 h-5 text-yellow-600" />
-            Logros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            {achievements.map((achievement) => (
-              <div 
-                key={achievement.id} 
-                className={`
-                  p-3 rounded-lg border-2 transition-all duration-300
-                  ${achievement.unlocked 
-                    ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200' 
-                    : 'bg-gray-50 border-gray-200 opacity-60'
-                  }
-                `}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`
-                    text-2xl transition-all duration-300
-                    ${achievement.unlocked ? 'animate-bounce' : 'grayscale'}
-                  `}>
-                    {achievement.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-medium ${achievement.unlocked ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {achievement.title}
-                    </p>
-                    <p className={`text-xs ${achievement.unlocked ? 'text-gray-600' : 'text-gray-400'}`}>
-                      {achievement.description}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Removed mocked Recent Activity and Achievements */}
     </div>
   );
 };

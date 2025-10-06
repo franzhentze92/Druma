@@ -73,8 +73,8 @@ const Navigation: React.FC = () => {
 
   // Shop sub-options
   const shopOptions = [
-    { id: 'services', label: 'Servicios', icon: Wrench, color: 'from-blue-500 to-cyan-500', path: '/marketplace/services' },
     { id: 'products', label: 'Productos', icon: Package, color: 'from-green-500 to-emerald-500', path: '/marketplace/products' },
+    { id: 'services', label: 'Servicios', icon: Wrench, color: 'from-blue-500 to-cyan-500', path: '/marketplace/services' },
     { id: 'orders', label: 'Mis Órdenes', icon: ShoppingCart, color: 'from-purple-500 to-indigo-500', path: '/client-orders' },
   ];
 
@@ -86,9 +86,8 @@ const Navigation: React.FC = () => {
 
   // Simplified navigation items for bottom menu (mobile-first game-like navigation)
   const bottomNavItems = [
-    { id: 'home', label: 'Inicio', icon: Home, color: 'from-purple-500 to-pink-600', path: '/pet-room' },
-    { id: 'care', label: 'Cuidado', icon: Heart, color: 'from-pink-500 to-purple-600', expandable: true },
     { id: 'shop', label: 'Tienda', icon: ShoppingBag, color: 'from-orange-500 to-red-600', expandable: true },
+    { id: 'care', label: 'Cuidado', icon: Heart, color: 'from-pink-500 to-purple-600', expandable: true },
     { id: 'adopcion', label: 'Adopción', icon: Users, color: 'from-green-500 to-emerald-600', path: '/adopcion' },
     { id: 'social', label: 'Social', icon: MessageCircle, color: 'from-blue-500 to-cyan-600', expandable: true },
     { id: 'profile', label: 'Ajustes', icon: Settings, color: 'from-gray-500 to-slate-600', path: '/ajustes' },
@@ -174,7 +173,7 @@ const Navigation: React.FC = () => {
                 }}
                 className={`
                   w-full flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-200 min-w-0
-                  ${location.pathname === item.path 
+                  ${(location.pathname === item.path || (item.id === 'shop' && location.pathname.startsWith('/marketplace')))
                     ? `bg-gradient-to-r ${item.color} text-white shadow-lg transform scale-105` 
                     : 'text-gray-500 hover:text-gray-700'
                   }

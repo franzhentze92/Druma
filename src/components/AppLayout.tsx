@@ -49,8 +49,8 @@ const AppLayout: React.FC = () => {
     if (userRole === 'client') {
       const pathname = location.pathname;
       
-      // Handle new gamified routes
-      if (pathname === '/pet-room' || pathname === '/') {
+      // Handle new gamified routes - removed pet-room as default
+      if (pathname === '/pet-room') {
         return <PetRoom />;
       }
       if (pathname === '/social-hub') {
@@ -135,7 +135,7 @@ const AppLayout: React.FC = () => {
         case 'ajustes':
           return <Ajustes />;
         default:
-          return <PetRoom />; // Default to PetRoom for gamified experience
+          return <Marketplace />; // Default to Marketplace products page
       }
     }
     
